@@ -12,8 +12,7 @@ from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandle
 
 ##################################################### CONFIGURATION #####################################################################################
 # logging configuration
-logging.basicConfig(level='DEBUG', filename="std.log",
-                    format='%(levelname)s %(message)s', filemode='w')
+logging.basicConfig(level='DEBUG', format='%(levelname)s %(message)s')
 logger = logging.getLogger()
 
 # load dotenv
