@@ -3,3 +3,4 @@ std.log
 newJson.json
 .env
 python_requirments.txt
+test.py

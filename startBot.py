@@ -23,8 +23,10 @@ updater = Updater(token=os.getenv('TGTOKEN'))
 dispatcher = updater.dispatcher
 job = updater.job_queue
 
+# headers configuration
+headers = {'X-API-Key': os.getenv('D2TOKEN')}
+
 # request manifest
-# headers = {'X-API-Key': os.getenv('D2TOKEN')}
 # url = 'https://www.bungie.net/Platform/Destiny2/Manifest/'
 # manifest = requests.request('GET', url).json()
 # main_url = "https://www.bungie.net/" + \
