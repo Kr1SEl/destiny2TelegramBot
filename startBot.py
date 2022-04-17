@@ -200,6 +200,8 @@ def getGambitStats(update: Update, context: CallbackContext):
             host=os.getenv('dbHost'), user=os.getenv('dbUser'), password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
         connection.autocommit = True
         logger.debug('DB connetced succesfully')
+        context.bot.send_message(
+            chat_id=update.effective_chat.id, text='There must be Gambit statis in the future!')
     except Exception as ex:
         logger.error(
             f'Exeption {ex} when trying to connect to DataBase')
@@ -218,13 +220,13 @@ def unkownReply(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id, text="Unfortunately, I don't know how to answer this request \U0001F61E.\nYou may contact @kr1sel if the bot is broken.")
 
 
-def cancel(context: CallbackContext):
-    user = update.message.from_user
-    logger.debug("User %s canceled the conversation.", user.first_name)
-    update.message.reply_text(
-        'Bye! I hope we can talk again some day.', reply_markup=ReplyKeyboardRemove())
-    if connection:
-        connection.close()
+# def cancel(context: CallbackContext):
+#     user = update.message.from_user
+#     logger.debug("User %s canceled the conversation.", user.first_name)
+#     update.message.reply_text(
+#         'Bye! I hope we can talk again some day.', reply_markup=ReplyKeyboardRemove())
+#     if connection:
+#         connection.close()
 
 
 ###################################################### KEYBOARDS #####################################################################################
@@ -251,7 +253,7 @@ dispatcher.add_handler(ConversationHandler(
         FINDUSER: [MessageHandler(Filters.text & (
             ~Filters.command), startWorkWithUser)]
     },
-    fallbacks=[CommandHandler('cancel', cancel)],
+    fallbacks=[CommandHandler('findguardian', findBungieUser)],
 ))
 dispatcher.add_handler(MessageHandler(
     Filters.text & ~Filters.command, unkownReply))
