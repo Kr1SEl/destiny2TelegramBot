@@ -160,8 +160,9 @@ def getRaidStats(update: Update, context: CallbackContext):
         with connection.cursor() as cursor:
             cursor.execute(f"""SELECT * FROM users
                            WHERE chat_id = {update.effective_chat.id}""")
-            membershipId = cursor.fetchone()[1]
-            membershipType = cursor.fetchone()[2]
+            fetchoneReminder = cursor.fetchone()
+            membershipId = fetchoneReminder[1]
+            membershipType = fetchoneReminder[2]
             url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=Profiles%2CCharacters%2CRecords'
             raidStatRequest = requests.get(
                 url, headers=headers).json()['Response']['profileRecords']['data']['records']
