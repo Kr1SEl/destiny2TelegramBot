@@ -263,6 +263,8 @@ dispatcher.add_handler(CallbackQueryHandler(
     getRaidStats, pattern='raid'))
 dispatcher.add_handler(CallbackQueryHandler(
     getGambitStats, pattern='gambit'))
+dispatcher.add_handler(CallbackQueryHandler(
+    findBungieUser, pattern='anotherUser'))
 
 
 ##################################################### MAIN ###########################################################################################
