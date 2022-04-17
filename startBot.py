@@ -62,7 +62,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
             if len(splittedName[1]) == 4:
                 url = "https://www.bungie.net/Platform/Destiny2/SearchDestinyPlayerByBungieName/All"
                 payload = {"displayName": splittedName[0],
-                           "displayNameCode": data.integerFromString(splittedName[1])}
+                           "displayNameCode": splittedName[1]}
                 logger.debug(f'User data recieved: {payload}')
                 context.bot.send_message(
                     chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE

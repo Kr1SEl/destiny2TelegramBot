@@ -8,7 +8,6 @@ classes = {
 # Use profile records to obtain data
 
 raids = {
-
     '\U0001F98B Vow of the Disciple': '2168422218',
     '\U0001F48E Vault of Glass': '3114569402',
     '\U0001F5FF Deep Stone Crypt': '3185876102',
@@ -28,3 +27,7 @@ def integerFromString(someString):
         return newValue
     except ValueError as ve:
         return 0
+
+
+# gambit matches won: 3337964454
+# completed gambit matches: 3565692839
