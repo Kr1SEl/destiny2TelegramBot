@@ -7,19 +7,18 @@ classes = {
 
 # Use profile records to obtain data
 
-raids = {'avaliable': {
+raids = {
     'Garden of Salvation':  '3804486505',
     'Vow of the Disciple': '2168422218',
     'Deep Stone Crypt': '3185876102',
     'Last Wish': '3448775736',
     # objective hash for VoG: 4240665
-    'Vault of Glass': '2384429092'},
-    'vaulted': {
+    'Vault of Glass': '2384429092',
     'Crown of Sorrow': '3292013047',
     'Scourge of the Past': '1455741693',
     'Spire of Stars': '3996781284',
     'Eater of Worlds': '1627755918',
-    'Leviathan': '2266286943'}
+    'Leviathan': '2266286943'
 }
 
 

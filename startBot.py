@@ -3,13 +3,14 @@ import requests
 import sys
 import os
 import data
+import pytz
 import logging
 import psycopg2
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
 
-
+# TODO add timezone setter, language select
 ##################################################### CONFIGURATION #####################################################################################
 # logging configuration
 logging.basicConfig(level='DEBUG', format='%(levelname)s %(message)s')
@@ -25,26 +26,6 @@ job = updater.job_queue
 
 # headers configuration
 headers = {'X-API-Key': os.getenv('D2TOKEN')}
-
-# request manifest
-# url = 'https://www.bungie.net/Platform/Destiny2/Manifest/'
-# manifest = requests.request('GET', url).json()
-# main_url = "https://www.bungie.net/" + \
-#     manifest["Response"]["jsonWorldContentPaths"]["en"]
-# json_data = requests.get(main_url).json()
-# with open('manifest.json', 'w') as json_file:
-#     json.dump(json_data, json_file)
-
-# DB configuration
-# try:
-#     connection = psycopg2.connect(
-#    host = os.getenv('dbHost'), user = os.getenv('dbUser'), password = os.getenv('dbPassword'), port = os.getenv('dbPort'), dbname = os.getenv('dbName'))
-#     with connection.cursor() as cursor:
-#         cursor.execute('SELECT version();')
-#         print(cursor.fetchone())
-# except Exception as ex:
-#     logger.error(f'Exeption {ex} when trying to connect to DataBase')
-#     sys.exit()
 
 FINDUSER = range(1)
 
@@ -93,8 +74,9 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                         chat_id=update.effective_chat.id, text=f"\U00002B50 User <b>{payload['displayName']}#{payload['displayNameCode']}</b> was succesfully found!", parse_mode='HTML')  # unicode success
                     membershipId = jsonSubString[0]['membershipId']
                     membershipType = jsonSubString[0]['membershipType']
+                    url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=Profiles%2CCharacters%2CRecords'
                     profileRequest = requests.get(
-                        f"https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=Profiles%2CCharacters", headers=headers).json()['Response']
+                        url, headers=headers).json()['Response']
                     characters = profileRequest['profile']['data']['characterIds']
                     charData = ""
                     logger.debug('Proceeding through characters')
@@ -105,8 +87,9 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                         charData += f'{classRem}: {liteRem} \U00002728\n'
                     context.bot.send_message(
                         chat_id=update.effective_chat.id, text=f"{charData}", parse_mode='HTML')
+                    url = f"http://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Stats/"
                     allTimeStats = requests.get(
-                        f"http://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Stats/", headers=headers).json()['Response']['mergedAllCharacters']['results']
+                        url, headers=headers).json()['Response']['mergedAllCharacters']['results']
                     logger.debug('Finding and printing all time stats')
                     subStats = allTimeStats['allPvE']['allTime']
                     # unicode SHIELD
@@ -156,6 +139,16 @@ def startWorkWithUser(update: Update, context: CallbackContext):
             connection.close()
 
 
+def whereIsXur(update: Update, context: CallbackContext):
+    # todo check location value when xur is not on the place
+    pass
+
+
+def legendaryLostSector(update: Update, context: CallbackContext):
+    # todo build db accordingly to ls location
+    pass
+
+
 # TODO
 def getRaidStats(update: Update, context: CallbackContext):
     logger.debug('Getting raid stats')
@@ -164,6 +157,28 @@ def getRaidStats(update: Update, context: CallbackContext):
             host=os.getenv('dbHost'), user=os.getenv('dbUser'), password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
         connection.autocommit = True
         logger.debug('DB connetced succesfully')
+        with connection.cursor() as cursor:
+            cursor.execute(f"""SELECT * FROM users
+                           WHERE chat_id = {update.effective_chat.id}""")
+            membershipId = cursor.fetchone()[1]
+            membershipType = cursor.fetchone()[2]
+            url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=Profiles%2CCharacters%2CRecords'
+            raidStatRequest = requests.get(
+                url, headers=headers).json()['Response']['profileRecords']['data']['records']
+            logger.debug(f'Getting raid stats from apt {raidStatRequest}')
+            raidResultStr = 'Number of activity closures:\n'
+            for raid in data.raids:
+                raidStat = raidStatRequest[data.raids[raid]]
+                try:
+                    progress = raidStat['objectives']['progress']
+                except Exception as e:
+                    logger.error(
+                        f'{e} \nNo progress value for {raid} - {data.raids[raid]}')
+                    progress = 0
+                finally:
+                    raidResultStr += f'{raid}: {progress}\n'
+            send_message(
+                chat_id=update.effective_chat.id, text=raidResultStr)
     except Exception as ex:
         logger.error(
             f'Exeption {ex} when trying to connect to DataBase')
@@ -227,6 +242,8 @@ def possibleUserStats():
 
 ##################################################### HANDLERS ###########################################################################################
 dispatcher.add_handler(CommandHandler('start', startChat))
+dispatcher.add_handler(CommandHandler('whereIsXur', whereIsXur))
+dispatcher.add_handler(CommandHandler('legendaryLostSector', whereIsXur))
 dispatcher.add_handler(ConversationHandler(
     entry_points=[CommandHandler('findguardian', findBungieUser)],
     states={

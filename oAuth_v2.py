@@ -1,8 +1,11 @@
 import requests
 import os
-from dotenv import load_dotenv
+import logging
+import psycopg2
 import json
+import sys
 import urllib
+from dotenv import load_dotenv
 
 
 def getDataForToken(token: str):
@@ -17,14 +20,36 @@ def getToken(requestToken: str):
     }
     response = requests.post(
         os.getenv('TOKEN_URL'), data=getDataForToken(requestToken), headers=headers)
-    requestToken = response.json()['refresh_token']
     print(response.json())
+    return response.json()['refresh_token'], response.json()['access_token']
 
 
 def run():
-    requestToken = 'CP6HBBKGAgAgcHFvmpslmwlJRweOE+1Bc09LvseSc8tr6HqIqQxfk27gAAAArKkJq3DKI/JxbMXfza64b8BEhqaWrV4l5dP67u0WDR4EFDPAvOFuYXg5wzveBmAVipPCKTiUfoWfGuxaGeUEJOPInMDvOsGQX63lm0LD6+JuughRSKzaJr/u/CrQNlUoW2Ytoxr0s9sR7UaxdU2xgWTULFubhdhSN9rRhCJLIV0WqMoXw9bjHZtr482ExVyG/pf26hFpHWRvWtLStLpK9syMAc1JLF4JfEbs2Wmlv8oYFcGLCZoiHn4cinVbDJjZByynBNgjfCXfc62yrelCCREWF7oh6wcLd+LOcQmiCKs='
     load_dotenv()
-    getToken(requestToken)
-
-
-run()
+    try:
+        connection = psycopg2.connect(
+            host=os.getenv('dbHost'), user=os.getenv('dbUser'), password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
+        connection.autocommit = True
+        logging.debug('DB connetced succesfully')
+        with connection.cursor() as cursor:
+            cursor.execute(f"""SELECT * FROM refresh_token
+                                            WHERE token_id = 1""")
+            logging.debug(
+                f'Getting refresh token from DB')
+            requestToken = cursor.fetchone()
+            print(requestToken)
+            result = getToken(requestToken[1])
+            logging.debug('Updateing refresh token')
+            cursor.execute(
+                f"""UPDATE refresh_token
+                    SET token = \'{result[0]}\' 
+                    WHERE token_id = 1;""")
+            return result[1]
+    except Exception as ex:
+        logging.error(
+            f'Exeption {ex} when trying to connect to DataBase')
+        sys.exit()
+    finally:
+        if connection:
+            logging.debug('Closing DB connection')
+            connection.close()
