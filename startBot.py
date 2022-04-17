@@ -117,7 +117,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                     logging.error(
                         "Enter Type is correct but user not exists")
                     context.bot.send_message(
-                        chat_id=update.effective_chat.id, text=f"\U0001F6AB User <b>{data.payload['displayName']}#{data.payload['displayNameCode']}</b> does not exist!", parse_mode='HTML', reply_markup=tryAgainKeyboard())  # unicode ERROR
+                        chat_id=update.effective_chat.id, text=f"\U0001F6AB User <b>{splittedName[0]}#{splittedName[1]}</b> does not exist!", parse_mode='HTML', reply_markup=tryAgainKeyboard())  # unicode ERROR
             else:
                 logging.error(
                     "Enter Type is incorrect - not 4 numbers in playerCode")
