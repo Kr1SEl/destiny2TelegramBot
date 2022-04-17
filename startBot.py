@@ -171,7 +171,7 @@ def getRaidStats(update: Update, context: CallbackContext):
             for raid in data.raids:
                 raidStat = raidStatRequest[data.raids[raid]]
                 try:
-                    progress = raidStat['objectives']['progress']
+                    progress = raidStat['objectives'][0]['progress']
                 except Exception as e:
                     logger.error(
                         f'{e} \nNo progress value for {raid} - {data.raids[raid]}')
