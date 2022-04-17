@@ -178,7 +178,7 @@ def getRaidStats(update: Update, context: CallbackContext):
                     progress = 0
                 finally:
                     raidResultStr += f'{raid}: {progress}\n'
-            send_message(
+            context.bot.send_message(
                 chat_id=update.effective_chat.id, text=raidResultStr)
     except Exception as ex:
         logger.error(
