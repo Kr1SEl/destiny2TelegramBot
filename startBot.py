@@ -50,6 +50,21 @@ def findBungieUser(update: Update, context: CallbackContext):
     return FINDUSER
 
 
+def getGlobalStats(update: Update, context: CallbackContext):
+    url = f"http://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Stats/"
+    allTimeStats = requests.get(
+        url, headers=headers).json()['Response']['mergedAllCharacters']['results']
+    logger.debug('Finding and printing all time stats')
+    subStats = allTimeStats['allPvE']['allTime']
+    # unicode SHIELD
+    strResults = f"<b>PVE Stats</b> \U0001F6E1\n<i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>\n  Activities: <b>{subStats['activitiesCleared']['basic']['displayValue']}</b>\n  K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"
+    subStats = allTimeStats['allPvP']['allTime']
+    # unicode TWOSWORDS
+    strResults += f"\n<b>PVP Stats</b> \U00002694\n<i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>\n  Win Ratio: <b>{round((subStats['activitiesWon']['basic']['value']/subStats['activitiesEntered']['basic']['value']) * 100, 2)}</b>\n  K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"
+    context.bot.send_message(chat_id=update.effective_chat.id, text=strResults,
+                             parse_mode='HTML')
+
+
 def startWorkWithUser(update: Update, context: CallbackContext):
     logger.debug('Start work with user function entred')
     try:
@@ -87,18 +102,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                         charData += f'{classRem}: {liteRem} \U00002728\n'
                     context.bot.send_message(
                         chat_id=update.effective_chat.id, text=f"{charData}", parse_mode='HTML')
-                    url = f"http://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Stats/"
-                    allTimeStats = requests.get(
-                        url, headers=headers).json()['Response']['mergedAllCharacters']['results']
-                    logger.debug('Finding and printing all time stats')
-                    subStats = allTimeStats['allPvE']['allTime']
-                    # unicode SHIELD
-                    strResults = f"<b>PVE Stats</b> \U0001F6E1\n<i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>\n  Activities: <b>{subStats['activitiesCleared']['basic']['displayValue']}</b>\n  K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"
-                    subStats = allTimeStats['allPvP']['allTime']
-                    # unicode TWOSWORDS
-                    strResults += f"\n<b>PVP Stats</b> \U00002694\n<i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>\n  Win Ratio: <b>{round((subStats['activitiesWon']['basic']['value']/subStats['activitiesEntered']['basic']['value']) * 100, 2)}</b>\n  K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"
-                    context.bot.send_message(chat_id=update.effective_chat.id, text=strResults,
-                                             parse_mode='HTML')
+                    getGlobalStats(update, context)
                     logger.debug(
                         f'Cheching if data is in DB: {update.effective_chat.id}')
                     with connection.cursor() as cursor:
