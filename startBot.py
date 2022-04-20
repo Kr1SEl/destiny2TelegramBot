@@ -166,7 +166,7 @@ def getRaidStats(update: Update, context: CallbackContext):
             url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Character/0/Stats/'
             raidStats = requests.get(
                 url, headers=headers).json()['Response']['raid']['allTime']
-            raidResultStr = f'<b>Raid Stats</b> \U0000FE0F\n <i>=></i>Raids Completed: <b>{raidStats["activitiesCleared"]["basic"]["value"]}</b>\n  Kills: <b>{raidStats["kills"]["basic"]["value"]}</b>\n  Deaths: <b>{raidStats["deaths"]["basic"]["value"]}</b>\n  K/D: <b>{raidStats["killsDeathsRatio"]["basic"]["value"]}</b>\n  KA/D: <b>{raidStats["killsDeathsAssists"]["basic"]["value"]}</b>\n'
+            raidResultStr = f'<b>Raid Stats</b> \U00002620\n <i>=></i>Raids Completed: <b>{raidStats["activitiesCleared"]["basic"]["displayValue"]}</b>\n  Kills: <b>{raidStats["kills"]["basic"]["displayValue"]}</b>\n  Deaths: <b>{raidStats["deaths"]["basic"]["value"]}</b>\n  K/D: <b>{raidStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>\n  KA/D: <b>{raidStats["killsDeathsAssists"]["basic"]["displayValue"]}</b>\n'
             url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=900'
             raidStatRequest = requests.get(
                 url, headers=headers).json()['Response']['profileRecords']['data']['records']
@@ -183,7 +183,7 @@ def getRaidStats(update: Update, context: CallbackContext):
                 finally:
                     raidResultStr += f'{raid}: <b>{progress}</b>\n'
             context.bot.send_message(
-                chat_id=update.effective_chat.id, text=raidResultStr)
+                chat_id=update.effective_chat.id, text=raidResultStr, parse_mode='HTML')
     except Exception as ex:
         logger.error(
             f'Exeption {ex} when trying to connect to DataBase')
@@ -213,7 +213,7 @@ def getGambitStats(update: Update, context: CallbackContext):
             url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Character/0/Stats/'
             gambitStats = requests.get(
                 url, headers=headers).json()['Response']['allPvECompetitive']['allTime']
-            message = f'<b>Gambit Stats</b> \U0001F98E\n <i>=></i>Matches: <b>{gambitStats["activitiesEntered"]["basic"]["value"]}</b>\n  Wins: <b>{gambitStats["activitiesWon"]["basic"]["value"]}</b>\n  Win Rate: <b>{round((gambitStats["activitiesWon"]["basic"]["value"]/gambitStats["activitiesEntered"]["basic"]["value"]) * 100, 2)}</b>\n  Kills: <b>{gambitStats["kills"]["basic"]["value"]}</b>\n  Deaths: <b>{gambitStats["deaths"]["basic"]["value"]}</b>\n  K/D: <b>{gambitStats["killsDeathsRatio"]["basic"]["value"]}</b>\n  KA/D: <b>{gambitStats["killsDeathsAssists"]["basic"]["value"]}</b>\n  Invasion Kills: <b>{gambitStats["invasionKills"]["basic"]["value"]}</b>'
+            message = f'<b>Gambit Stats</b> \U0001F98E\n <i>=></i>Matches: <b>{gambitStats["activitiesEntered"]["basic"]["displayValue"]}</b>\n  Wins: <b>{gambitStats["activitiesWon"]["basic"]["displayValue"]}</b>\n  Win Rate: <b>{round((gambitStats["activitiesWon"]["basic"]["value"]/gambitStats["activitiesEntered"]["basic"]["value"]) * 100, 2)}</b>\n  Kills: <b>{gambitStats["kills"]["basic"]["displayValue"]}</b>\n  Deaths: <b>{gambitStats["deaths"]["basic"]["displayValue"]}</b>\n  K/D: <b>{gambitStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>\n  KA/D: <b>{gambitStats["killsDeathsAssists"]["basic"]["displayValue"]}</b>\n  Invasion Kills: <b>{gambitStats["invasionKills"]["basic"]["displayValue"]}</b>'
         context.bot.send_message(
             chat_id=update.effective_chat.id, text=message, parse_mode='HTML')
     except Exception as ex:
