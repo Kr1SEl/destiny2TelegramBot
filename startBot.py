@@ -182,15 +182,18 @@ def xurNotifier(update: Update, context: CallbackContext):
         hour=20, minute=40, second=00, tzinfo=pytz.UTC)
     # job.run_daily(callback=notifyAboutXur, days=(
     #     0, 1, 2, 3, 4, 5, 6), time=timeToNotify, context=chat_id)
-    job.run_repeating(callback=notifyAboutXur, interval=5, context=chat_id)
+    job.run_repeating(callback=notifyAboutXur, interval=300,
+                      context=chat_id, name='xur')
     logger.debug('Job is set')
 
 
 # todo make stopable
 def stopXurNotifier(update: Update, context: CallbackContext):
+    logger.debug('Stop notification function entred')
     job_removed = remove_job_if_exists(
-        str(update.effective_chat.id), context)
+        'xur', context)
     text = ''
+    logger.debug(f'Job removed: {job_removed}')
     if job_removed:
         text = "Xûr notifier was stopped. You won't receive notification anymore. To start notifier again write <i>/xurNotifier</i>."
     else:
@@ -200,7 +203,9 @@ def stopXurNotifier(update: Update, context: CallbackContext):
 
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
-    current_jobs = context.job_queue.get_jobs_by_name(name)
+    logger.debug('Remove job if exists function entred')
+    current_jobs = job.get_jobs_by_name(name)
+    logger.debug(f'Current jobs: {current_jobs}')
     if not current_jobs:
         return False
     for job in current_jobs:
