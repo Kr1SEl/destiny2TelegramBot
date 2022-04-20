@@ -145,17 +145,21 @@ def startWorkWithUser(update: Update, context: CallbackContext):
 
 # TODO find out params and locations
 def whereIsXur(update: Update, context: CallbackContext):
+    logger.debug('Entering whereIsXur command')
     url = 'https://www.bungie.net/Platform/Destiny2/3/Profile/4611686018505337419/Character/2305843009665375420/Vendors/2190858386/?components=400'
     accessToken = getAccessToken()
     headers = {
         'X-API-KEY': os.getenv('D2TOKEN'),
         'Authorization': f'Bearer {accessToken}',
     }
+    logger.debug(f'Acces token received {accessToken}')
     response = requests.request("GET", url, headers=headers).json()
     if response['ErrorCode'] == '1627':
+        logger.debug('Xur is not on the place currently')
         context.bot.send_message(
             chat_id=update.effective_chat.id, text='Xur is not available right now')
     else:
+        logger.debug('Xur is avaliable')
         context.bot.send_message(
             chat_id=update.effective_chat.id, text='Xûr is avaliable on Destiny!')
     context.bot.send_message(
@@ -164,13 +168,16 @@ def whereIsXur(update: Update, context: CallbackContext):
 
 # using UTC - (my time - 3h)
 def xurNotifier(update: Update, context: CallbackContext):
+    logger.debug('Xur notifier function entred')
     chat_id = update.effective_chat.id
+    logger.debug(f'Chat id {chat_id}')
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text='Xûr notifier was succesfully set!\U00002604\nYou are gonna receive notification about his location every time he appears in the game. Stay safe, Guardian!')
     timeToNotify = datetime.time(
         hour=18, minute=32, second=00, tzinfo=pytz.UTC)
     job.run_daily(whereIsXur, context=context, days=(
         0, 1, 2, 3, 4, 5, 6), time=timeToNotify)
+    logger.debug('Job is set')
 
 
 def stopXurNotifier(update: Update, context):
