@@ -128,7 +128,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                 "Enter Type is incorrect - message has no separator")
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text='\U0001F6AB Invalid Bungie name!\n(Example: Name#0123)', reply_markup=tryAgainKeyboard())  # unicode ERROR
-    except Exception as ex:
+    except (psycopg2.OperationalError, psycopg2.errors.LockNotAvailable) as ex:
         logger.error(f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
             chat_id=update.effective_chat.id, text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
