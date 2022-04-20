@@ -167,7 +167,7 @@ def xurNotifier(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text='Xûr notifier was succesfully set!\U00002604\nYou are gonna receive notification about his location every time he appears in the game. Stay safe, Guardian!')
     timeToNitify = datetime.time(
-        hour=17, minute=50, second=00, tzinfo=pytz.UTC)
+        hour=18, minute=32, second=00, tzinfo=pytz.UTC)
     context.job_queue.run_daily(whereIsXur, context=update.effective_chat.chat_id, days=(
         0, 1, 2, 3, 4, 5, 6), time=timeToNitify)
 
