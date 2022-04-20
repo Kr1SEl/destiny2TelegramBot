@@ -7,7 +7,6 @@ import pytz
 import logging
 import psycopg2
 import datetime
-import tzinfo
 from oAuth_v2 import getAccessToken
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
