@@ -153,6 +153,8 @@ def legendaryLostSector(update: Update, context: CallbackContext):
 def getRaidStats(update: Update, context: CallbackContext):
     logger.debug('Getting raid stats')
     try:
+        if update.callback_query is not None:
+            update.callback_query.edit_message_reply_markup(None)
         connection = psycopg2.connect(
             host=os.getenv('dbHost'), user=os.getenv('dbUser'), password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
         connection.autocommit = True
@@ -184,6 +186,8 @@ def getRaidStats(update: Update, context: CallbackContext):
                     raidResultStr += f'{raid}: <b>{progress}</b>\n'
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text=raidResultStr, parse_mode='HTML')
+            context.bot.send_message(
+                chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
     except Exception as ex:
         logger.error(
             f'Exeption {ex} when trying to connect to DataBase')
@@ -200,6 +204,8 @@ def getRaidStats(update: Update, context: CallbackContext):
 def getGambitStats(update: Update, context: CallbackContext):
     logger.debug('Getting gambit stats')
     try:
+        if update.callback_query is not None:
+            update.callback_query.edit_message_reply_markup(None)
         connection = psycopg2.connect(
             host=os.getenv('dbHost'), user=os.getenv('dbUser'), password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
         connection.autocommit = True
@@ -216,6 +222,8 @@ def getGambitStats(update: Update, context: CallbackContext):
             message = f'<b>Gambit Stats</b> \U0001F98E\n <i>=></i>Matches: <b>{gambitStats["activitiesEntered"]["basic"]["displayValue"]}</b>\n  Wins: <b>{gambitStats["activitiesWon"]["basic"]["displayValue"]}</b>\n  Win Rate: <b>{round((gambitStats["activitiesWon"]["basic"]["value"]/gambitStats["activitiesEntered"]["basic"]["value"]) * 100, 2)}</b>\n  Kills: <b>{gambitStats["kills"]["basic"]["displayValue"]}</b>\n  Deaths: <b>{gambitStats["deaths"]["basic"]["displayValue"]}</b>\n  K/D: <b>{gambitStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>\n  KA/D: <b>{gambitStats["killsDeathsAssists"]["basic"]["displayValue"]}</b>\n  Invasion Kills: <b>{gambitStats["invasionKills"]["basic"]["displayValue"]}</b>'
         context.bot.send_message(
             chat_id=update.effective_chat.id, text=message, parse_mode='HTML')
+        context.bot.send_message(
+            chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
     except Exception as ex:
         logger.error(
             f'Exeption {ex} when trying to connect to DataBase')
