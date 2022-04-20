@@ -168,7 +168,7 @@ def whereIsXur(update: Update, context: CallbackContext):
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
     logger.debug('Remove job if exists function entred')
-    current_jobs = job.get_jobs_by_name(name)
+    current_jobs = context.job_queue.get_jobs_by_name(name)
     logger.debug(f'Current jobs: {current_jobs}')
     if not current_jobs:
         return False
