@@ -167,15 +167,16 @@ def xurNotifier(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text='Xûr notifier was succesfully set!\U00002604\nYou are gonna receive notification about his location every time he appears in the game. Stay safe, Guardian!')
     timeToNitify = datetime.time(
-        hour=17, minute=38, second=00, tzinfo=pytz.UTC)
-    context.job_queue.run_daily(whereIsXur, context=update.message.chat_id, days=(
+        hour=17, minute=50, second=00, tzinfo=pytz.UTC)
+    context.job_queue.run_daily(whereIsXur, context=update.effective_chat.chat_id, days=(
         0, 1, 2, 3, 4, 5, 6), time=timeToNitify)
 
 
 def stopXurNotifier(update: Update, context: CallbackContext):
-    job_removed = remove_job_if_exists(str(update.message.chat_id), context)
+    job_removed = remove_job_if_exists(
+        str(update.effective_chat.chat_id), context)
     text = 'Timer successfully cancelled!' if job_removed else 'You have no active timer.'
-    update.message.reply_text(text)
+    update.effective_chat.reply_text(text)
 
 
 def legendaryLostSector(update: Update, context: CallbackContext):
