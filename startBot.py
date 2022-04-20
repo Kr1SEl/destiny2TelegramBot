@@ -42,6 +42,12 @@ def startChat(update: Update, context: CallbackContext):
 # unicode Earth
 
 
+# TODO update with every new command
+def helpUser(update: Update, context: CallbackContext):
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text=f"\U0001F310 <b>{context.bot.get_me().first_name}</b> was developed to help Destiny 2 players to protect the Last City!\n\nList of commands:\n\n<b>Stat Monitor</b>\n/findguardian - find user using BungieID\n\n<b>Useful command</b>\n\n/whereIsXur - gives current Xûr location and items\n/xurNotifier - turns on notifications about Xûr's arrival\n/stopXurNotifier - stops notifications about Xûr's arrival", parse_mode='HTML')
+
+
 def findBungieUser(update: Update, context: CallbackContext):
     logger.debug('Find Bungie user function entred')
     if update.callback_query is not None:
@@ -53,6 +59,7 @@ def findBungieUser(update: Update, context: CallbackContext):
 
 
 # TODO add checks for users with two-factor
+# TODO fix stats
 def startWorkWithUser(update: Update, context: CallbackContext):
     logger.debug('Start work with user function entred')
     try:
@@ -144,6 +151,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
 
 
 # TODO find out params and locations
+# TODO make stickers to send as a xur location
 def whereIsXur(update: Update, context: CallbackContext):
     logger.debug('Entering whereIsXur command')
     url = 'https://www.bungie.net/Platform/Destiny2/3/Profile/4611686018505337419/Character/2305843009665375420/Vendors/2190858386/?components=400'
@@ -157,7 +165,7 @@ def whereIsXur(update: Update, context: CallbackContext):
     if response['ErrorCode'] == '1627':
         logger.debug('Xur is not on the place currently')
         context.bot.send_message(
-            chat_id=update.effective_chat.id, text='Xur is not available right now')
+            chat_id=update.effective_chat.id, text='Xûr is not available right now')
     else:
         logger.debug('Xur is avaliable')
         context.bot.send_message(
@@ -179,13 +187,14 @@ def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
 
 def notifyAboutXur(context: CallbackContext) -> None:
     job = context.job
-    context.bot.send_message(job.context, text='Beep!')
+    context.bot.send_message(
+        job.context, text='\U0001F4C5 Xûr has arrived!\nTo find out his location and item pool write <i>/whereIsXur</i>.', parse_mode='HTML')
 
 
 # todo make notification 24 hours before xur leaves
 # using UTC - (my time - 3h)
 def xurNotifier(update: Update, context: CallbackContext):
-    logger.debug('Xur notifier function entred')
+    logger.debug('Xûr notifier function entred')
     chat_id = update.effective_chat.id
     logger.debug(f'Chat id {chat_id}')
     timeToNotify = datetime.time(
@@ -194,7 +203,7 @@ def xurNotifier(update: Update, context: CallbackContext):
         [4]), time=timeToNotify, context=chat_id, name='xur')
     logger.debug('Job is set')
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='Xûr notifier was succesfully set! \U0001F47E\nYou are gonna receive notification about his location every time he appears in the game')
+                             text='\U0001F47E <b>Xûr notifier</b> was succesfully set!\nYou are gonna receive a notification every time he appears in the game', parse_mode='HTML')
 
 
 def stopXurNotifier(update: Update, context: CallbackContext):
@@ -334,10 +343,11 @@ def possibleUserStats():
 
 ##################################################### HANDLERS ###########################################################################################
 dispatcher.add_handler(CommandHandler('start', startChat))
+dispatcher.add_handler(CommandHandler('help', helpUser))
 dispatcher.add_handler(CommandHandler('whereIsXur', whereIsXur))
 dispatcher.add_handler(CommandHandler('xurNotifier', xurNotifier))
 dispatcher.add_handler(CommandHandler('stopXurNotifier', stopXurNotifier))
-dispatcher.add_handler(CommandHandler('legendaryLostSector', whereIsXur))
+dispatcher.add_handler(CommandHandler('legendaryLostSector', lostSector))
 dispatcher.add_handler(ConversationHandler(
     entry_points=[CommandHandler('findguardian', findBungieUser)],
     states={

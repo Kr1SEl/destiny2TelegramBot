@@ -26,7 +26,6 @@ locations = {
     'Nessus': 'unknown'
 }
 
-
 statHashes = {
     'Crucible Matches': '4181381577',
     'Crucible Matches Won': '3561485187',
