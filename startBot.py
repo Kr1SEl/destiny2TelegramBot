@@ -111,6 +111,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                                 f'Inserting data in DB: {update.effective_chat.id}')
                             cursor.execute(
                                 f"""INSERT INTO users (chat_id, membershipId, membershipType, characters) VALUES ({update.effective_chat.id}, \'{membershipId}\', \'{membershipType}\', \'{charactersForDB}\');""")
+                    update.callback_query.answer()
                     context.bot.send_message(
                         chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
                 else:
@@ -132,7 +133,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
         logger.error(f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
             chat_id=update.effective_chat.id, text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
-        sys.exit()
+        return
     finally:
         if connection:
             logger.debug('Closing DB connection')
@@ -186,6 +187,7 @@ def getRaidStats(update: Update, context: CallbackContext):
                     raidResultStr += f'{raid}: <b>{progress}</b>\n'
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text=raidResultStr, parse_mode='HTML')
+            update.callback_query.answer()
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
     except Exception as ex:
@@ -193,7 +195,7 @@ def getRaidStats(update: Update, context: CallbackContext):
             f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
             chat_id=update.effective_chat.id, text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
-        sys.exit()
+        return
     finally:
         if connection:
             logger.debug('Closing DB connection')
@@ -222,6 +224,7 @@ def getGambitStats(update: Update, context: CallbackContext):
             message = f'<b>Gambit Stats</b> \U0001F98E\n <i>=></i>Matches: <b>{gambitStats["activitiesEntered"]["basic"]["displayValue"]}</b>\n  Wins: <b>{gambitStats["activitiesWon"]["basic"]["displayValue"]}</b>\n  Win Rate: <b>{round((gambitStats["activitiesWon"]["basic"]["value"]/gambitStats["activitiesEntered"]["basic"]["value"]) * 100, 2)}</b>\n  Kills: <b>{gambitStats["kills"]["basic"]["displayValue"]}</b>\n  Deaths: <b>{gambitStats["deaths"]["basic"]["displayValue"]}</b>\n  K/D: <b>{gambitStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>\n  KA/D: <b>{gambitStats["killsDeathsAssists"]["basic"]["displayValue"]}</b>\n  Invasion Kills: <b>{gambitStats["invasionKills"]["basic"]["displayValue"]}</b>'
         context.bot.send_message(
             chat_id=update.effective_chat.id, text=message, parse_mode='HTML')
+        update.callback_query.answer()
         context.bot.send_message(
             chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
     except Exception as ex:
@@ -229,7 +232,7 @@ def getGambitStats(update: Update, context: CallbackContext):
             f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
             chat_id=update.effective_chat.id, text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
-        sys.exit()
+        return
     finally:
         if connection:
             logger.debug('Closing DB connection')
