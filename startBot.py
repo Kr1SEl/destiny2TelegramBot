@@ -111,7 +111,6 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                                 f'Inserting data in DB: {update.effective_chat.id}')
                             cursor.execute(
                                 f"""INSERT INTO users (chat_id, membershipId, membershipType, characters) VALUES ({update.effective_chat.id}, \'{membershipId}\', \'{membershipType}\', \'{charactersForDB}\');""")
-                    update.callback_query.answer()
                     context.bot.send_message(
                         chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
                 else:
