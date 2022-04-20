@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
 
-# TODO add timezone setter, language select
+# TODO language select
 ##################################################### CONFIGURATION #####################################################################################
 # logging configuration
 logging.basicConfig(level='DEBUG', format='%(levelname)s %(message)s')
@@ -347,7 +347,7 @@ dispatcher.add_handler(CommandHandler('help', helpUser))
 dispatcher.add_handler(CommandHandler('whereIsXur', whereIsXur))
 dispatcher.add_handler(CommandHandler('xurNotifier', xurNotifier))
 dispatcher.add_handler(CommandHandler('stopXurNotifier', stopXurNotifier))
-dispatcher.add_handler(CommandHandler('legendaryLostSector', lostSector))
+dispatcher.add_handler(CommandHandler('lostSector', legendaryLostSector))
 dispatcher.add_handler(ConversationHandler(
     entry_points=[CommandHandler('findguardian', findBungieUser)],
     states={
