@@ -176,7 +176,7 @@ def xurNotifier(update: Update, context: CallbackContext):
     timeToNotify = datetime.time(
         hour=18, minute=32, second=00, tzinfo=pytz.UTC)
     job.run_daily(whereIsXur, days=(
-        0, 1, 2, 3, 4, 5, 6), time=timeToNotify)
+        0, 1, 2, 3, 4, 5, 6), time=timeToNotify, context=update)
     logger.debug('Job is set')
 
 
