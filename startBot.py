@@ -332,7 +332,7 @@ def possibleUserStats():
 dispatcher.add_handler(CommandHandler('start', startChat))
 dispatcher.add_handler(CommandHandler('whereIsXur', whereIsXur))
 dispatcher.add_handler(CommandHandler('xurNotifier', xurNotifier))
-# dispatcher.add_handler(CommandHandler('stopXurNotifier', stopXurNotifier))
+dispatcher.add_handler(CommandHandler('stopXurNotifier', stopXurNotifier))
 dispatcher.add_handler(CommandHandler('legendaryLostSector', whereIsXur))
 dispatcher.add_handler(ConversationHandler(
     entry_points=[CommandHandler('findguardian', findBungieUser)],
