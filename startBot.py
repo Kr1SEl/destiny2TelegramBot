@@ -161,7 +161,7 @@ def getRaidStats(update: Update, context: CallbackContext):
         logger.debug('DB connetced succesfully')
         with connection.cursor() as cursor:
             cursor.execute(f"""SELECT * FROM users
-                           WHERE chat_id = {update.effective_chat.id}""")
+                           WHERE chat_id = \'{update.effective_chat.id}\'""")
             fetchoneReminder = cursor.fetchone()
             membershipId = fetchoneReminder[1]
             membershipType = fetchoneReminder[2]
@@ -213,7 +213,7 @@ def getGambitStats(update: Update, context: CallbackContext):
         logger.debug('DB connetced succesfully')
         with connection.cursor() as cursor:
             cursor.execute(f"""SELECT * FROM users
-                           WHERE chat_id = {update.effective_chat.id}""")
+                           WHERE chat_id = \'{update.effective_chat.id}\'""")
             fetchoneReminder = cursor.fetchone()
             membershipId = fetchoneReminder[1]
             membershipType = fetchoneReminder[2]
