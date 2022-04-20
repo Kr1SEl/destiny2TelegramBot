@@ -182,23 +182,21 @@ def notifyAboutXur(context: CallbackContext) -> None:
     context.bot.send_message(job.context, text='Beep!')
 
 
+# todo make notification 24 hours before xur leaves
 # using UTC - (my time - 3h)
 def xurNotifier(update: Update, context: CallbackContext):
     logger.debug('Xur notifier function entred')
     chat_id = update.effective_chat.id
     logger.debug(f'Chat id {chat_id}')
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='Xûr notifier was succesfully set!\U00002604\nYou are gonna receive notification about his location every time he appears in the game. Stay safe, Guardian!')
     timeToNotify = datetime.time(
-        hour=20, minute=40, second=00, tzinfo=pytz.UTC)
-    # job.run_daily(callback=notifyAboutXur, days=(
-    #     0, 1, 2, 3, 4, 5, 6), time=timeToNotify, context=chat_id)
-    job.run_repeating(callback=notifyAboutXur, interval=300,
-                      context=chat_id, name='xur')
+        hour=17, minute=00, second=30, tzinfo=pytz.UTC)
+    job.run_daily(callback=notifyAboutXur, days=(
+        5), time=timeToNotify, context=chat_id, name='xur')
     logger.debug('Job is set')
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text='Xûr notifier was succesfully set! \U0001F47E\nYou are gonna receive notification about his location every time he appears in the game')
 
 
-# todo make stopable
 def stopXurNotifier(update: Update, context: CallbackContext):
     logger.debug('Stop notification function entred')
     job_removed = remove_job_if_exists(
@@ -206,9 +204,9 @@ def stopXurNotifier(update: Update, context: CallbackContext):
     text = ''
     logger.debug(f'Job removed: {job_removed}')
     if job_removed:
-        text = "Xûr notifier was stopped. You won't receive notification anymore. To start notifier again write <i>/xurNotifier</i>."
+        text = "\U00002705 Xûr notifier was stopped. You won't receive notification anymore. To start notifier again write <i>/xurNotifier</i>. Stay safe, Guardian!"
     else:
-        text = "You have no set notifier. To start notifier write <i>/xurNotifier</i>."
+        text = "\U0001F6AB You have no set notifiers. To start Xûr notifier write <i>/xurNotifier</i>."
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=text, parse_mode='HTML')
 
