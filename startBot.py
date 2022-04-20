@@ -166,7 +166,7 @@ def whereIsXur(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id, text=response)
 
 
-def alarm(context: CallbackContext) -> None:
+def notifyAboutXur(context: CallbackContext) -> None:
     job = context.job
     context.bot.send_message(job.context, text='Beep!')
 
@@ -179,18 +179,32 @@ def xurNotifier(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text='Xûr notifier was succesfully set!\U00002604\nYou are gonna receive notification about his location every time he appears in the game. Stay safe, Guardian!')
     timeToNotify = datetime.time(
-        hour=20, minute=18, second=00, tzinfo=pytz.UTC)
-    job.run_daily(callback=alarm, days=(
-        0, 1, 2, 3, 4, 5, 6), time=timeToNotify, context=chat_id)
+        hour=20, minute=40, second=00, tzinfo=pytz.UTC)
+    # job.run_daily(callback=notifyAboutXur, days=(
+    #     0, 1, 2, 3, 4, 5, 6), time=timeToNotify, context=chat_id)
+    job.run_repeating(callback=notifyAboutXur, interval=5, context=chat_id)
     logger.debug('Job is set')
 
 
-# def stopXurNotifier(update: Update, context):
-#     job_removed = remove_job_if_exists(
-#         str(update.effective_chat.id), context)
-#     text = 'Timer successfully cancelled!' if job_removed else 'You have no active timer.'
-#     context.bot.send_message(
-#         chat_id=update.effective_chat.id, text="You won't receive notifications about Xûr arrivals anymore.")
+def stopXurNotifier(update: Update, context: CallbackContext):
+    job_removed = remove_job_if_exists(
+        str(update.effective_chat.id), context)
+    text = ''
+    if job_removed:
+        text = "Xûr notifier was stopped. You won't receive notification anymore. To start notifier again write <i>/xurNotifier</i>."
+    else:
+        text = "You have no set notifier. To start notifier write <i>/xurNotifier</i>."
+    context.bot.send_message(
+        chat_id=update.effective_chat.id, text=text, parse_mode='HTML')
+
+
+def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
+    current_jobs = context.job_queue.get_jobs_by_name(name)
+    if not current_jobs:
+        return False
+    for job in current_jobs:
+        job.schedule_removal()
+    return True
 
 
 def legendaryLostSector(update: Update, context: CallbackContext):
@@ -290,14 +304,6 @@ def unkownReply(update: Update, context: CallbackContext):
     context.bot.send_message(
         chat_id=update.effective_chat.id, text="Unfortunately, I don't know how to answer this request \U0001F61E.\nYou may contact @kr1sel if the bot is broken.")
 
-
-def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
-    current_jobs = context.job_queue.get_jobs_by_name(name)
-    if not current_jobs:
-        return False
-    for job in current_jobs:
-        job.schedule_removal()
-    return True
 
 # def cancel(context: CallbackContext):
 #     user = update.message.from_user
