@@ -175,7 +175,7 @@ def xurNotifier(update: Update, context: CallbackContext):
                              text='Xûr notifier was succesfully set!\U00002604\nYou are gonna receive notification about his location every time he appears in the game. Stay safe, Guardian!')
     timeToNotify = datetime.time(
         hour=18, minute=32, second=00, tzinfo=pytz.UTC)
-    job.run_daily(whereIsXur, context=context, days=(
+    job.run_daily(whereIsXur, context=update, days=(
         0, 1, 2, 3, 4, 5, 6), time=timeToNotify)
     logger.debug('Job is set')
 
