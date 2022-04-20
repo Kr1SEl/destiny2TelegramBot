@@ -103,7 +103,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                         f'Cheching if data is in DB: {update.effective_chat.id}')
                     with connection.cursor() as cursor:
                         cursor.execute(f"""SELECT * FROM users
-                                            WHERE chat_id = {update.effective_chat.id}""")
+                                            WHERE chat_id = \'{update.effective_chat.id}\'""")
                         if cursor.fetchone() == None:
                             charactersForDB = ' '.join(
                                 [str(character) for character in characters])
