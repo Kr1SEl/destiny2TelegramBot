@@ -186,6 +186,7 @@ def xurNotifier(update: Update, context: CallbackContext):
     logger.debug('Job is set')
 
 
+# todo make stopable
 def stopXurNotifier(update: Update, context: CallbackContext):
     job_removed = remove_job_if_exists(
         str(update.effective_chat.id), context)
