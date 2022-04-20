@@ -6,6 +6,7 @@ import data
 import pytz
 import logging
 import psycopg2
+from oAuth_v2 import getAccessToken
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
@@ -111,6 +112,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                                 f'Inserting data in DB: {update.effective_chat.id}')
                             cursor.execute(
                                 f"""INSERT INTO users (chat_id, membershipId, membershipType, characters) VALUES (\'{update.effective_chat.id}\', \'{membershipId}\', \'{membershipType}\', \'{charactersForDB}\');""")
+                    update.callback_query.answer()
                     context.bot.send_message(
                         chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
                 else:
@@ -139,9 +141,17 @@ def startWorkWithUser(update: Update, context: CallbackContext):
             connection.close()
 
 
+# TODO find out params and locations
 def whereIsXur(update: Update, context: CallbackContext):
-    # todo check location value when xur is not on the place
-    pass
+    url = 'https://www.bungie.net/Platform/Destiny2/3/Profile/4611686018505337419/Character/2305843009665375420/Vendors/2190858386/?components=400'
+    accessToken = getAccessToken()
+    headers = {
+        'X-API-KEY': os.getenv('D2TOKEN'),
+        'Authorization': f'Bearer {accessToken}',
+    }
+    response = requests.request("GET", url, headers=headers).json()
+    context.bot.send_message(
+        chat_id=update.effective_chat.id, text=response)
 
 
 def legendaryLostSector(update: Update, context: CallbackContext):

@@ -20,12 +20,12 @@ def getToken(requestToken: str):
     }
     response = requests.post(
         os.getenv('TOKEN_URL'), data=getDataForToken(requestToken), headers=headers)
-    print(response.json())
     return response.json()['refresh_token'], response.json()['access_token']
 
 
-def run():
+def getAccessToken():
     load_dotenv()
+    result = ''
     try:
         connection = psycopg2.connect(
             host=os.getenv('dbHost'), user=os.getenv('dbUser'), password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
@@ -37,14 +37,13 @@ def run():
             logging.debug(
                 f'Getting refresh token from DB')
             requestToken = cursor.fetchone()
-            print(requestToken)
             result = getToken(requestToken[1])
-            logging.debug('Updateing refresh token')
+            logging.debug(
+                f'Updating refresh token\nRefresh token is {result[0]}')
             cursor.execute(
                 f"""UPDATE refresh_token
                     SET token = \'{result[0]}\' 
                     WHERE token_id = 1;""")
-            return result[1]
     except Exception as ex:
         logging.error(
             f'Exeption {ex} when trying to connect to DataBase')
@@ -53,3 +52,4 @@ def run():
         if connection:
             logging.debug('Closing DB connection')
             connection.close()
+    return result[1]

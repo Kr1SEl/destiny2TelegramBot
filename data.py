@@ -21,7 +21,9 @@ raids = {
 }
 
 locations = {
-
+    'European Dead Zone': '3747705955',
+    'Tower': '3747705955',
+    'Nessus': 'unknown'
 }
 
 
@@ -29,7 +31,6 @@ statHashes = {
     'Crucible Matches': '4181381577',
     'Crucible Matches Won': '3561485187',
     'Oponents Defeated': '1897223897',
-
 }
 
 
@@ -39,7 +40,3 @@ def integerFromString(someString):
         return newValue
     except ValueError as ve:
         return 0
-
-
-# gambit matches won: 3337964454
-# completed gambit matches: 3565692839
