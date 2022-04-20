@@ -166,6 +166,17 @@ def whereIsXur(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id, text=response)
 
 
+def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
+    logger.debug('Remove job if exists function entred')
+    current_jobs = job.get_jobs_by_name(name)
+    logger.debug(f'Current jobs: {current_jobs}')
+    if not current_jobs:
+        return False
+    for job in current_jobs:
+        job.schedule_removal()
+    return True
+
+
 def notifyAboutXur(context: CallbackContext) -> None:
     job = context.job
     context.bot.send_message(job.context, text='Beep!')
@@ -200,17 +211,6 @@ def stopXurNotifier(update: Update, context: CallbackContext):
         text = "You have no set notifier. To start notifier write <i>/xurNotifier</i>."
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=text, parse_mode='HTML')
-
-
-def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
-    logger.debug('Remove job if exists function entred')
-    current_jobs = job.get_jobs_by_name(name)
-    logger.debug(f'Current jobs: {current_jobs}')
-    if not current_jobs:
-        return False
-    for job in current_jobs:
-        job.schedule_removal()
-    return True
 
 
 def legendaryLostSector(update: Update, context: CallbackContext):
