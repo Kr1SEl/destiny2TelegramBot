@@ -6,6 +6,8 @@ import data
 import pytz
 import logging
 import psycopg2
+import datetime
+import tzinfo
 from oAuth_v2 import getAccessToken
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -51,6 +53,7 @@ def findBungieUser(update: Update, context: CallbackContext):
     return FINDUSER
 
 
+# TODO add checks for users with two-factor
 def startWorkWithUser(update: Update, context: CallbackContext):
     logger.debug('Start work with user function entred')
     try:
@@ -150,8 +153,30 @@ def whereIsXur(update: Update, context: CallbackContext):
         'Authorization': f'Bearer {accessToken}',
     }
     response = requests.request("GET", url, headers=headers).json()
+    if response['ErrorCode'] == '1627':
+        context.bot.send_message(
+            chat_id=update.effective_chat.id, text='Xur is not available right now')
+    else:
+        context.bot.send_message(
+            chat_id=update.effective_chat.id, text='Xûr is avaliable on Destiny!')
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=response)
+
+
+# using UTC - my time - 3h
+def xurNotifier(update: Update, context: CallbackContext):
+    bot.send_message(chat_id=update.effective_chat.id,
+                     text='Xûr notifier was succesfully set!\U00002604\nYou are gonna receive notification about his location every time he appears in the game. Stay safe, Guardian!')
+    timeToNitify = datetime.datetime(
+        hour=17, minute=35, second=00, tzinfo=pytz.UTC)
+    context.job_queue.run_daily(whereIsXur, context=update.message.chat_id, days=(
+        0, 1, 2, 3, 4, 5, 6), time=timeToNitify)
+
+
+def stopXurNotifier(update: Update, context: CallbackContext):
+    job_removed = remove_job_if_exists(str(update.message.chat_id), context)
+    text = 'Timer successfully cancelled!' if job_removed else 'You have no active timer.'
+    update.message.reply_text(text)
 
 
 def legendaryLostSector(update: Update, context: CallbackContext):
@@ -159,7 +184,6 @@ def legendaryLostSector(update: Update, context: CallbackContext):
     pass
 
 
-# TODO
 def getRaidStats(update: Update, context: CallbackContext):
     logger.debug('Getting raid stats')
     try:
@@ -211,7 +235,6 @@ def getRaidStats(update: Update, context: CallbackContext):
             connection.close()
 
 
-# rdy?
 def getGambitStats(update: Update, context: CallbackContext):
     logger.debug('Getting gambit stats')
     try:
@@ -254,6 +277,14 @@ def unkownReply(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id, text="Unfortunately, I don't know how to answer this request \U0001F61E.\nYou may contact @kr1sel if the bot is broken.")
 
 
+def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
+    current_jobs = context.job_queue.get_jobs_by_name(name)
+    if not current_jobs:
+        return False
+    for job in current_jobs:
+        job.schedule_removal()
+    return True
+
 # def cancel(context: CallbackContext):
 #     user = update.message.from_user
 #     logger.debug("User %s canceled the conversation.", user.first_name)
@@ -280,6 +311,8 @@ def possibleUserStats():
 ##################################################### HANDLERS ###########################################################################################
 dispatcher.add_handler(CommandHandler('start', startChat))
 dispatcher.add_handler(CommandHandler('whereIsXur', whereIsXur))
+dispatcher.add_handler(CommandHandler('xurNotifier', xurNotifier))
+dispatcher.add_handler(CommandHandler('stopXurNotifier', stopXurNotifier))
 dispatcher.add_handler(CommandHandler('legendaryLostSector', whereIsXur))
 dispatcher.add_handler(ConversationHandler(
     entry_points=[CommandHandler('findguardian', findBungieUser)],
