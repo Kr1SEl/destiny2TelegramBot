@@ -22,7 +22,7 @@ logger = logging.getLogger()
 load_dotenv()
 
 # bot configuration
-updater = Updater(token=os.getenv('TGTOKEN'))
+updater = Updater(token=os.getenv('TGTOKEN'), use_context=True)
 dispatcher = updater.dispatcher
 job = updater.job_queue
 
