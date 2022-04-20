@@ -13,11 +13,23 @@ raids = {
     '\U0001F5FF Deep Stone Crypt': '3185876102',
     '\U0001F313 Garden of Salvation':  '3804486505',
     '\U0001F30C Last Wish': '3448775736',
-    '\U0000269C Crown of Sorrow': '3292013047',
-    '\U0000269C Scourge of the Past': '1455741693',
-    '\U0000269C Spire of Stars': '3996781284',
-    '\U0000269C Eater of Worlds': '1627755918',
-    '\U0000269C Leviathan': '2266286943'
+    '\U0001F451 Crown of Sorrow': '3292013047',
+    '\U0001F916 Scourge of the Past': '1455741693',
+    '\U0001F47E Spire of Stars': '3996781284',
+    '\U0001F990 Eater of Worlds': '1627755918',
+    '\U0001F3C6 Leviathan': '2266286943'
+}
+
+locations = {
+
+}
+
+
+statHashes = {
+    'Crucible Matches': '4181381577',
+    'Crucible Matches Won': '3561485187',
+    'Oponents Defeated': '1897223897',
+
 }
 
 

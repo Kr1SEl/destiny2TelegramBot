@@ -163,11 +163,15 @@ def getRaidStats(update: Update, context: CallbackContext):
             fetchoneReminder = cursor.fetchone()
             membershipId = fetchoneReminder[1]
             membershipType = fetchoneReminder[2]
-            url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=Profiles%2CCharacters%2CRecords'
+            url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Character/0/Stats/'
+            raidStats = requests.get(
+                url, headers=headers).json()['Response']['raid']['allTime']
+            raidResultStr = f'<b>Raid Stats</b> \U0000FE0F\n <i>=></i>Raids Completed: <b>{raidStats["activitiesCleared"]["basic"]["value"]}</b>\n  Kills: <b>{raidStats["kills"]["basic"]["value"]}</b>\n  Deaths: <b>{raidStats["deaths"]["basic"]["value"]}</b>\n  K/D: <b>{raidStats["killsDeathsRatio"]["basic"]["value"]}</b>\n  KA/D: <b>{raidStats["killsDeathsAssists"]["basic"]["value"]}</b>\n'
+            url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=900'
             raidStatRequest = requests.get(
                 url, headers=headers).json()['Response']['profileRecords']['data']['records']
             logger.debug(f'Getting raid stats from apt {raidStatRequest}')
-            raidResultStr = 'Number of activity closures:\n'
+            raidResultStr += '<b>Number of activity closures:</b>\n'
             for raid in data.raids:
                 raidStat = raidStatRequest[data.raids[raid]]
                 try:
@@ -177,7 +181,7 @@ def getRaidStats(update: Update, context: CallbackContext):
                         f'{e} \nNo progress value for {raid} - {data.raids[raid]}')
                     progress = 0
                 finally:
-                    raidResultStr += f'{raid}: {progress}\n'
+                    raidResultStr += f'{raid}: <b>{progress}</b>\n'
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text=raidResultStr)
     except Exception as ex:
@@ -192,7 +196,7 @@ def getRaidStats(update: Update, context: CallbackContext):
             connection.close()
 
 
-# TODO
+# rdy?
 def getGambitStats(update: Update, context: CallbackContext):
     logger.debug('Getting gambit stats')
     try:
@@ -200,8 +204,18 @@ def getGambitStats(update: Update, context: CallbackContext):
             host=os.getenv('dbHost'), user=os.getenv('dbUser'), password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
         connection.autocommit = True
         logger.debug('DB connetced succesfully')
+        with connection.cursor() as cursor:
+            cursor.execute(f"""SELECT * FROM users
+                           WHERE chat_id = {update.effective_chat.id}""")
+            fetchoneReminder = cursor.fetchone()
+            membershipId = fetchoneReminder[1]
+            membershipType = fetchoneReminder[2]
+            url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Character/0/Stats/'
+            gambitStats = requests.get(
+                url, headers=headers).json()['Response']['allPvECompetitive']['allTime']
+            message = f'<b>Gambit Stats</b> \U0001F98E\n <i>=></i>Matches: <b>{gambitStats["activitiesEntered"]["basic"]["value"]}</b>\n  Wins: <b>{gambitStats["activitiesWon"]["basic"]["value"]}</b>\n  Win Rate: <b>{round((gambitStats["activitiesWon"]["basic"]["value"]/gambitStats["activitiesEntered"]["basic"]["value"]) * 100, 2)}</b>\n  Kills: <b>{gambitStats["kills"]["basic"]["value"]}</b>\n  Deaths: <b>{gambitStats["deaths"]["basic"]["value"]}</b>\n  K/D: <b>{gambitStats["killsDeathsRatio"]["basic"]["value"]}</b>\n  KA/D: <b>{gambitStats["killsDeathsAssists"]["basic"]["value"]}</b>\n  Invasion Kills: <b>{gambitStats["invasionKills"]["basic"]["value"]}</b>'
         context.bot.send_message(
-            chat_id=update.effective_chat.id, text='There must be Gambit statis in the future!')
+            chat_id=update.effective_chat.id, text=message, parse_mode='HTML')
     except Exception as ex:
         logger.error(
             f'Exeption {ex} when trying to connect to DataBase')
