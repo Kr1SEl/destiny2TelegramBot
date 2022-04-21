@@ -123,8 +123,16 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                 with connection.cursor() as cursor:
                     charactersForDB = ' '.join(
                         [str(character) for character in characters])
+                    cursor.execute(f"""SELECT *
+                                   FROM users
+                                   WHERE chat_id = \'{update.effective_chat.id}\'""")
+                    if cursor.fetchone() != None:
+                        logger.debug(
+                            f'User {update.effective_chat.id} exists in DB, deleting')
+                        cursor.execute(f"""DELETE FROM users
+                                        WHERE chat_id = \'{update.effective_chat.id}\';""")
                     cursor.execute(
-                        f"""TRUNCATE TABLE users; INSERT INTO users (chat_id, membershipId, membershipType, characters) VALUES (\'{update.effective_chat.id}\', \'{membershipId}\', \'{membershipType}\', \'{charactersForDB}\');""")
+                        f"""INSERT INTO users (chat_id, membershipId, membershipType, characters) VALUES (\'{update.effective_chat.id}\', \'{membershipId}\', \'{membershipType}\', \'{charactersForDB}\');""")
                 if update.callback_query != None:
                     update.callback_query.answer()
                 context.bot.send_message(
@@ -196,7 +204,7 @@ def notifyAboutXur(context: CallbackContext) -> None:
 # todo make notification 24 hours before xur leaves
 # using UTC - (my time - 3h)
 def xurNotifier(update: Update, context: CallbackContext):
-    logger.debug('Xûr notifier function entred')
+    logger.debug('Xûr Notifier function entred')
     chat_id = update.effective_chat.id
     logger.debug(f'Chat id {chat_id}')
     timeToNotify = datetime.time(
@@ -205,7 +213,7 @@ def xurNotifier(update: Update, context: CallbackContext):
         [4]), time=timeToNotify, context=chat_id, name='xur')
     logger.debug('Job is set')
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='\U0001F47E <b>Xûr notifier</b> was succesfully set!\nYou are gonna receive a notification every time he appears in the game', parse_mode='HTML')
+                             text='\U0001F47E <b>Xûr Notifier</b> was succesfully set!\nYou are gonna receive a notification every time he appears in the game', parse_mode='HTML')
 
 
 def stopXurNotifier(update: Update, context: CallbackContext):
@@ -215,7 +223,7 @@ def stopXurNotifier(update: Update, context: CallbackContext):
     text = ''
     logger.debug(f'Job removed: {job_removed}')
     if job_removed:
-        text = "\U00002705 Xûr notifier was stopped. You won't receive notification anymore. To start notifier again write <i>/xurNotifier</i>. Stay safe, Guardian!"
+        text = "\U00002705 Xûr Notifier was stopped. You won't receive notification anymore. To start notifier again write <i>/xurNotifier</i>. Stay safe, Guardian!"
     else:
         text = "\U0001F6AB You have no set notifiers. To start Xûr notifier write <i>/xurNotifier</i>."
     context.bot.send_message(
