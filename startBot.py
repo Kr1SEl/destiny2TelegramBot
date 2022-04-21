@@ -45,7 +45,7 @@ def startChat(update: Update, context: CallbackContext):
 # TODO update with every new command
 def helpUser(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text=f"\U0001F310 <b>{context.bot.get_me().first_name}</b> was developed to help Destiny 2 players to protect the Last City!\n\nList of commands:\n\n<b>Stat Monitor</b>\n/findguardian - find user using BungieID\n\n<b>Useful command</b>\n\n/whereIsXur - gives current Xûr location and items\n/xurNotifier - turns on notifications about Xûr's arrival\n/stopXurNotifier - stops notifications about Xûr's arrival", parse_mode='HTML')
+                             text=f"\U0001F310 <b>{context.bot.get_me().first_name}</b> was developed to help Destiny 2 players to protect the Last City!\n\nList of commands:\n\n<b>Stat Monitor</b>\n\n/findguardian - find user using BungieID\n\n<b>Useful commands</b>\n\n/whereIsXur - gives current Xûr location and items\n/xurNotifier - turns on notifications about Xûr's arrival\n/stopXurNotifier - stops notifications about Xûr's arrival", parse_mode='HTML')
 
 
 def findBungieUser(update: Update, context: CallbackContext):
@@ -78,57 +78,62 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                     chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
                 jsonSubString = requests.request(
                     "POST", url, headers=headers, data=json.dumps(payload)).json()["Response"]
-                if len(jsonSubString) == 1:
-                    logger.debug('User succesfully found')
-                    context.bot.send_message(
-                        chat_id=update.effective_chat.id, text=f"\U00002B50 User <b>{payload['displayName']}#{payload['displayNameCode']}</b> was succesfully found!", parse_mode='HTML')  # unicode success
-                    membershipId = jsonSubString[0]['membershipId']
-                    membershipType = jsonSubString[0]['membershipType']
-                    url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=Profiles%2CCharacters%2CRecords'
-                    profileRequest = requests.get(
-                        url, headers=headers).json()['Response']
-                    characters = profileRequest['profile']['data']['characterIds']
-                    charData = ""
-                    logger.debug('Proceeding through characters')
-                    for character in characters:
-                        classRem = data.classes[f"{profileRequest['characters']['data'][character]['classType']}"]
-                        liteRem = profileRequest['characters']['data'][character]['light']
-                        # unicode SPARCLE
-                        charData += f'{classRem}: {liteRem} \U00002728\n'
-                    context.bot.send_message(
-                        chat_id=update.effective_chat.id, text=f"{charData}", parse_mode='HTML')
-                    url = f"http://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Stats/"
-                    allTimeStats = requests.get(
-                        url, headers=headers).json()['Response']['mergedAllCharacters']['results']
-                    logger.debug('Finding and printing all time stats')
-                    subStats = allTimeStats['allPvE']['allTime']
-                    # unicode SHIELD
-                    strResults = f"<b>PVE Stats</b> \U0001F6E1\n<i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>\n  Activities: <b>{subStats['activitiesCleared']['basic']['displayValue']}</b>\n  K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"
-                    subStats = allTimeStats['allPvP']['allTime']
-                    # unicode TWOSWORDS
-                    strResults += f"\n<b>PVP Stats</b> \U00002694\n<i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>\n  Win Ratio: <b>{round((subStats['activitiesWon']['basic']['value']/subStats['activitiesEntered']['basic']['value']) * 100, 2)}</b>\n  K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"
-                    context.bot.send_message(chat_id=update.effective_chat.id, text=strResults,
-                                             parse_mode='HTML')
-                    logger.debug(
-                        f'Cheching if data is in DB: {update.effective_chat.id}')
-                    with connection.cursor() as cursor:
-                        cursor.execute(f"""SELECT * FROM users
-                                            WHERE chat_id = \'{update.effective_chat.id}\'""")
-                        if cursor.fetchone() == None:
-                            charactersForDB = ' '.join(
-                                [str(character) for character in characters])
-                            logger.debug(
-                                f'Inserting data in DB: {update.effective_chat.id}')
-                            cursor.execute(
-                                f"""INSERT INTO users (chat_id, membershipId, membershipType, characters) VALUES (\'{update.effective_chat.id}\', \'{membershipId}\', \'{membershipType}\', \'{charactersForDB}\');""")
-                    update.callback_query.answer()
-                    context.bot.send_message(
-                        chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
+                membershipId = ''
+                membershipType = ''
+                if len(jsonSubString) >= 1:
+                    for i in range(0, len(jsonSubString)):
+                        if(len(jsonSubString[0]['applicableMembershipTypes']) > 0):
+                            membershipId = jsonSubString[0]['membershipId']
+                            membershipType = jsonSubString[0]['membershipType']
                 else:
                     logging.error(
                         "Enter Type is correct but user not exists")
                     context.bot.send_message(
                         chat_id=update.effective_chat.id, text=f"\U0001F6AB User <b>{splittedName[0]}#{splittedName[1]}</b> does not exist!", parse_mode='HTML', reply_markup=tryAgainKeyboard())  # unicode ERROR
+                    return
+                logger.debug('User succesfully found')
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id, text=f"\U00002B50 User <b>{payload['displayName']}#{payload['displayNameCode']}</b> was succesfully found!", parse_mode='HTML')  # unicode success
+                url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=Profiles%2CCharacters%2CRecords'
+                profileRequest = requests.get(
+                    url, headers=headers).json()['Response']
+                characters = profileRequest['profile']['data']['characterIds']
+                charData = ""
+                logger.debug('Proceeding through characters')
+                for character in characters:
+                    classRem = data.classes[f"{profileRequest['characters']['data'][character]['classType']}"]
+                    liteRem = profileRequest['characters']['data'][character]['light']
+                    # unicode SPARCLE
+                    charData += f'{classRem}: {liteRem} \U00002728\n'
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id, text=f"{charData}", parse_mode='HTML')
+                url = f"http://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Stats/"
+                allTimeStats = requests.get(
+                    url, headers=headers).json()['Response']['mergedAllCharacters']['results']
+                logger.debug('Finding and printing all time stats')
+                subStats = allTimeStats['allPvE']['allTime']
+                # unicode SHIELD
+                strResults = f"<b>PVE Stats</b> \U0001F6E1\n<i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>\n  Activities: <b>{subStats['activitiesCleared']['basic']['displayValue']}</b>\n  K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"
+                subStats = allTimeStats['allPvP']['allTime']
+                # unicode TWOSWORDS
+                strResults += f"\n<b>PVP Stats</b> \U00002694\n<i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>\n  Win Ratio: <b>{round((subStats['activitiesWon']['basic']['value']/subStats['activitiesEntered']['basic']['value']) * 100, 2)}</b>\n  K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"
+                context.bot.send_message(chat_id=update.effective_chat.id, text=strResults,
+                                         parse_mode='HTML')
+                logger.debug(
+                    f'Cheching if data is in DB: {update.effective_chat.id}')
+                with connection.cursor() as cursor:
+                    cursor.execute(f"""SELECT * FROM users
+                                            WHERE chat_id = \'{update.effective_chat.id}\'""")
+                    if cursor.fetchone() == None:
+                        charactersForDB = ' '.join(
+                            [str(character) for character in characters])
+                        logger.debug(
+                            f'Inserting data in DB: {update.effective_chat.id}')
+                        cursor.execute(
+                            f"""INSERT INTO users (chat_id, membershipId, membershipType, characters) VALUES (\'{update.effective_chat.id}\', \'{membershipId}\', \'{membershipType}\', \'{charactersForDB}\');""")
+                update.callback_query.answer()
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
             else:
                 logging.error(
                     "Enter Type is incorrect - not 4 numbers in playerCode")
