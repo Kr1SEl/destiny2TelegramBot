@@ -120,17 +120,12 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                 context.bot.send_message(chat_id=update.effective_chat.id, text=strResults,
                                          parse_mode='HTML')
                 logger.debug(
-                    f'Cheching if data is in DB: {update.effective_chat.id}')
+                    f'Updating Data in db: {update.effective_chat.id}')
                 with connection.cursor() as cursor:
-                    cursor.execute(f"""SELECT * FROM users
-                                            WHERE chat_id = \'{update.effective_chat.id}\'""")
-                    if cursor.fetchone() == None:
-                        charactersForDB = ' '.join(
-                            [str(character) for character in characters])
-                        logger.debug(
-                            f'Inserting data in DB: {update.effective_chat.id}')
-                        cursor.execute(
-                            f"""INSERT INTO users (chat_id, membershipId, membershipType, characters) VALUES (\'{update.effective_chat.id}\', \'{membershipId}\', \'{membershipType}\', \'{charactersForDB}\');""")
+                    charactersForDB = ' '.join(
+                        [str(character) for character in characters])
+                    cursor.execute(
+                        f"""TRUNCATE TABLE users; INSERT INTO users (chat_id, membershipId, membershipType, characters) VALUES (\'{update.effective_chat.id}\', \'{membershipId}\', \'{membershipType}\', \'{charactersForDB}\');""")
                 if update.callback_query != None:
                     update.callback_query.answer()
                 context.bot.send_message(
