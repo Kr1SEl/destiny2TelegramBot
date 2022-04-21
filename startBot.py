@@ -38,14 +38,22 @@ def startChat(update: Update, context: CallbackContext):
     sticker = open('stickers/hello.webp', 'rb')
     context.bot.send_sticker(chat_id=update.effective_chat.id, sticker=sticker)
     context.bot.send_message(
-        chat_id=update.effective_chat.id, text=f"Hello, Guardian!\nI'm a <b>{context.bot.get_me().first_name}</b> \U0001F30D.\nI was created to help Destiny 2 players check their statistics.\nTo find user send command <i>/findguardian</i>.", parse_mode='HTML')
+        chat_id=update.effective_chat.id, text=f"""Hello, Guardian!
+I'm a <b>{context.bot.get_me().first_name}</b> \U0001F30D.
+I was created to help Destiny 2 players check their statistics.
+To find user send command <i>/findguardian</i>.""", parse_mode='HTML')
 # unicode Earth
 
 
 # TODO update with every new command
 def helpUser(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text=f"\U0001F310 <b>{context.bot.get_me().first_name}</b> was developed to help Destiny 2 players to protect the Last City!\n\nList of commands:\n\n<b>Stat Monitor</b>\n\n/findguardian - find user using BungieID\n\n<b>Useful commands</b>\n\n/whereIsXur - gives current Xûr location and items\n/xurNotifier - turns on notifications about Xûr's arrival\n/stopXurNotifier - stops notifications about Xûr's arrival", parse_mode='HTML')
+                             text=f"""\U0001F310 <b>{context.bot.get_me().first_name}</b> was developed to help Destiny 2 players to protect the Last City!\n
+List of commands:\n\n<b>Stat Monitor</b>\n
+/findguardian - find user using BungieID\n
+<b>Useful commands</b>\n\n/whereIsXur - gives current Xûr location and items
+/xurNotifier - turns on notifications about Xûr's arrival
+/stopXurNotifier - stops notifications about Xûr's arrival""", parse_mode='HTML')
 
 
 def findBungieUser(update: Update, context: CallbackContext):
@@ -58,12 +66,97 @@ def findBungieUser(update: Update, context: CallbackContext):
     return FINDUSER
 
 
+def getInitialUserStats(context: CallbackContext):
+    logger.debug('getInitialUserStats job entred')
+    try:
+        connection = psycopg2.connect(
+            host=os.getenv('dbHost'), user=os.getenv('dbUser'),
+            password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
+        connection.autocommit = True
+        logger.debug('DB connetced succesfully')
+        job = context.job
+        logger.debug(f'Chat id: {job.context}')
+        membershipId = ''
+        membershipType = ''
+        characters = list()
+        with connection.cursor() as cursor:
+            logger.debug('Setting membershipType and membershipID from DB')
+            cursor.execute(f"""SELECT membershipid, membershiptype
+                           FROM users
+                           WHERE chat_id = \'{job.context}\';""")
+            cursorReminder = cursor.fetchone()
+            if cursorReminder == None:
+                logger.error(
+                    f'Record about {job.context} does not exist in database')
+                context.bot.send_message(
+                    job.context,
+                    text=f"""Record about your user was deleted or does not exist \U0001F61E. You may contact @kr1sel if the bot is broken.""",
+                    parse_mode='HTML')
+                return
+            membershipId = cursorReminder[0]
+            membershipType = cursorReminder[1]
+            logger.debug(
+                f'Data obtained from DB for {job.context}: membershipId - {membershipId}, membershipType - {membershipType}')
+        url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=Profiles%2CCharacters%2CRecords'
+        profileRequest = requests.get(
+            url, headers=headers).json()['Response']
+        characters = profileRequest['profile']['data']['characterIds']
+        with connection.cursor() as cursor:
+            logger.debug(f'Setting characters data to database {job.context}')
+            charactersForDB = ' '.join(
+                [str(character) for character in characters])
+            cursor.execute(
+                f"""UPDATE users 
+                SET characters = \'{charactersForDB}\'
+                WHERE chat_id = \'{job.context}\';""")
+        charData = ""
+        logger.debug('Proceeding through characters')
+        for character in characters:
+            classRem = data.classes[f"{profileRequest['characters']['data'][character]['classType']}"]
+            liteRem = profileRequest['characters']['data'][character]['light']
+            # unicode SPARCLE
+            charData += f'{classRem}: {liteRem} \U00002728\n'
+        context.bot.send_message(
+            job.context, text=f"{charData}", parse_mode='HTML')
+        # TODO fix stats
+        url = f"http://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Stats/"
+        allTimeStats = requests.get(
+            url, headers=headers).json()['Response']['mergedAllCharacters']['results']
+        logger.debug('Finding and printing all time stats')
+        subStats = allTimeStats['allPvE']['allTime']
+        # unicode SHIELD
+        strResults = f"""<b>PVE Stats</b> \U0001F6E1
+    <i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>
+        Activities: <b>{subStats['activitiesCleared']['basic']['displayValue']}</b>
+        K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"""
+        subStats = allTimeStats['allPvP']['allTime']
+        # unicode TWOSWORDS
+        strResults += f"""\n<b>PVP Stats</b> \U00002694
+    <i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>
+        Win Ratio: <b>{round((subStats['activitiesWon']['basic']['value']/subStats['activitiesEntered']['basic']['value']) * 100, 2)}</b> 
+        K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>"""
+        context.bot.send_message(
+            job.context, text=strResults, parse_mode='HTML')
+        context.bot.send_message(
+            job.context, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
+    except (psycopg2.OperationalError, psycopg2.errors.LockNotAvailable) as ex:
+        logger.error(f'Exeption {ex} when trying to connect to DataBase')
+        context.bot.send_message(
+            job.context, text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
+        return
+    finally:
+        if connection:
+            logger.debug('Closing DB connection')
+            connection.close()
+
+
 # TODO fix stats
 def startWorkWithUser(update: Update, context: CallbackContext):
     logger.debug('Start work with user function entred')
     try:
         connection = psycopg2.connect(
-            host=os.getenv('dbHost'), user=os.getenv('dbUser'), password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
+            host=os.getenv('dbHost'), user=os.getenv('dbUser'),
+            password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
         connection.autocommit = True
         logger.debug('DB connetced succesfully')
         splittedName = update.message.text.split('#')
@@ -77,80 +170,59 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                     chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
                 jsonSubString = requests.request(
                     "POST", url, headers=headers, data=json.dumps(payload)).json()["Response"]
-                membershipId = ''
-                membershipType = ''
                 if len(jsonSubString) >= 1:
                     for i in range(0, len(jsonSubString)):
                         if(len(jsonSubString[0]['applicableMembershipTypes']) > 0):
                             membershipId = jsonSubString[0]['membershipId']
                             membershipType = jsonSubString[0]['membershipType']
+                            with connection.cursor() as cursor:
+                                logger.debug(
+                                    f'Updating Data in db: {update.effective_chat.id}')
+                                cursor.execute(f"""SELECT *
+                                               FROM users
+                                               WHERE chat_id = \'{update.effective_chat.id}\'""")
+                                if cursor.fetchone() != None:
+                                    logger.debug(
+                                        f'User {update.effective_chat.id} exists in DB, deleting')
+                                    cursor.execute(f"""DELETE FROM users
+                                                    WHERE chat_id = \'{update.effective_chat.id}\';""")
+                                cursor.execute(
+                                    f"""INSERT INTO users (chat_id, membershipId, membershipType) 
+                                    VALUES (\'{update.effective_chat.id}\', \'{membershipId}\', \'{membershipType}\');""")
                 else:
                     logging.error(
                         "Enter Type is correct but user not exists")
                     context.bot.send_message(
-                        chat_id=update.effective_chat.id, text=f"\U0001F6AB User <b>{splittedName[0]}#{splittedName[1]}</b> does not exist!", parse_mode='HTML', reply_markup=tryAgainKeyboard())  # unicode ERROR
+                        chat_id=update.effective_chat.id,
+                        text=f"\U0001F6AB User <b>{splittedName[0]}#{splittedName[1]}</b> does not exist!",
+                        parse_mode='HTML', reply_markup=tryAgainKeyboard())  # unicode ERROR
                     return
                 logger.debug('User succesfully found')
                 context.bot.send_message(
-                    chat_id=update.effective_chat.id, text=f"\U00002B50 User <b>{payload['displayName']}#{payload['displayNameCode']}</b> was succesfully found!", parse_mode='HTML')  # unicode success
-                url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=Profiles%2CCharacters%2CRecords'
-                profileRequest = requests.get(
-                    url, headers=headers).json()['Response']
-                characters = profileRequest['profile']['data']['characterIds']
-                charData = ""
-                logger.debug('Proceeding through characters')
-                for character in characters:
-                    classRem = data.classes[f"{profileRequest['characters']['data'][character]['classType']}"]
-                    liteRem = profileRequest['characters']['data'][character]['light']
-                    # unicode SPARCLE
-                    charData += f'{classRem}: {liteRem} \U00002728\n'
-                context.bot.send_message(
-                    chat_id=update.effective_chat.id, text=f"{charData}", parse_mode='HTML')
-                url = f"http://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Stats/"
-                allTimeStats = requests.get(
-                    url, headers=headers).json()['Response']['mergedAllCharacters']['results']
-                logger.debug('Finding and printing all time stats')
-                subStats = allTimeStats['allPvE']['allTime']
-                # unicode SHIELD
-                strResults = f"<b>PVE Stats</b> \U0001F6E1\n<i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>\n  Activities: <b>{subStats['activitiesCleared']['basic']['displayValue']}</b>\n  K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"
-                subStats = allTimeStats['allPvP']['allTime']
-                # unicode TWOSWORDS
-                strResults += f"\n<b>PVP Stats</b> \U00002694\n<i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>\n  Win Ratio: <b>{round((subStats['activitiesWon']['basic']['value']/subStats['activitiesEntered']['basic']['value']) * 100, 2)}</b>\n  K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"
-                context.bot.send_message(chat_id=update.effective_chat.id, text=strResults,
-                                         parse_mode='HTML')
-                logger.debug(
-                    f'Updating Data in db: {update.effective_chat.id}')
-                with connection.cursor() as cursor:
-                    charactersForDB = ' '.join(
-                        [str(character) for character in characters])
-                    cursor.execute(f"""SELECT *
-                                   FROM users
-                                   WHERE chat_id = \'{update.effective_chat.id}\'""")
-                    if cursor.fetchone() != None:
-                        logger.debug(
-                            f'User {update.effective_chat.id} exists in DB, deleting')
-                        cursor.execute(f"""DELETE FROM users
-                                        WHERE chat_id = \'{update.effective_chat.id}\';""")
-                    cursor.execute(
-                        f"""INSERT INTO users (chat_id, membershipId, membershipType, characters) VALUES (\'{update.effective_chat.id}\', \'{membershipId}\', \'{membershipType}\', \'{charactersForDB}\');""")
+                    chat_id=update.effective_chat.id,
+                    text=f"\U00002B50 User <b>{payload['displayName']}#{payload['displayNameCode']}</b> was succesfully found!",
+                    parse_mode='HTML')  # unicode success
                 if update.callback_query != None:
                     update.callback_query.answer()
-                context.bot.send_message(
-                    chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
+                job.run_once(getInitialUserStats, 0,
+                             context=update.effective_chat.id)
             else:
                 logging.error(
                     "Enter Type is incorrect - not 4 numbers in playerCode")
                 context.bot.send_message(
-                    chat_id=update.effective_chat.id, text='\U0001F6AB Invalid Bungie name!\n(Example: Name#1234)', reply_markup=tryAgainKeyboard())  # unicode ERROR
+                    chat_id=update.effective_chat.id, text='\U0001F6AB Invalid Bungie name!\n(Example: Name#1234)',
+                    reply_markup=tryAgainKeyboard())  # unicode ERROR
         else:
             logging.error(
                 "Enter Type is incorrect - message has no separator")
             context.bot.send_message(
-                chat_id=update.effective_chat.id, text='\U0001F6AB Invalid Bungie name!\n(Example: Name#0123)', reply_markup=tryAgainKeyboard())  # unicode ERROR
+                chat_id=update.effective_chat.id, text='\U0001F6AB Invalid Bungie name!\n(Example: Name#0123)',
+                reply_markup=tryAgainKeyboard())  # unicode ERROR
     except (psycopg2.OperationalError, psycopg2.errors.LockNotAvailable) as ex:
         logger.error(f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
-            chat_id=update.effective_chat.id, text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
+            chat_id=update.effective_chat.id,
+            text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
         return
     finally:
         if connection:
@@ -198,22 +270,23 @@ def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
 def notifyAboutXur(context: CallbackContext) -> None:
     job = context.job
     context.bot.send_message(
-        job.context, text='\U0001F4C5 Xûr has arrived!\nTo find out his location and item pool write <i>/whereIsXur</i>.', parse_mode='HTML')
+        job.context, text='\U0001F4C5 Xûr has arrived!\nTo find out his location and item pool write <i>/whereIsXur</i>.',
+        parse_mode='HTML')
 
 
 # todo make notification 24 hours before xur leaves
 # using UTC - (my time - 3h)
 def xurNotifier(update: Update, context: CallbackContext):
     logger.debug('Xûr Notifier function entred')
-    chat_id = update.effective_chat.id
-    logger.debug(f'Chat id {chat_id}')
+    logger.debug(f'Chat id {update.effective_chat.id}')
     timeToNotify = datetime.time(
         hour=17, minute=00, second=30, tzinfo=pytz.UTC)
     job.run_daily(callback=notifyAboutXur, days=tuple(
-        [4]), time=timeToNotify, context=chat_id, name='xur')
+        [4]), time=timeToNotify, context=update.effective_chat.id, name='xur')
     logger.debug('Job is set')
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='\U0001F47E <b>Xûr Notifier</b> was succesfully set!\nYou are gonna receive a notification every time he appears in the game', parse_mode='HTML')
+                             text='\U0001F47E <b>Xûr Notifier</b> was succesfully set!\nYou are gonna receive a notification every time he appears in the game',
+                             parse_mode='HTML')
 
 
 def stopXurNotifier(update: Update, context: CallbackContext):
@@ -245,7 +318,8 @@ def getRaidStats(update: Update, context: CallbackContext):
         if update.callback_query != None:
             update.callback_query.answer()
         connection = psycopg2.connect(
-            host=os.getenv('dbHost'), user=os.getenv('dbUser'), password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
+            host=os.getenv('dbHost'), user=os.getenv('dbUser'),
+            password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
         connection.autocommit = True
         logger.debug('DB connetced succesfully')
         with connection.cursor() as cursor:
@@ -257,7 +331,12 @@ def getRaidStats(update: Update, context: CallbackContext):
             url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Character/0/Stats/'
             raidStats = requests.get(
                 url, headers=headers).json()['Response']['raid']['allTime']
-            raidResultStr = f'<b>Raid Stats</b> \U00002620\n <i>=></i>Raids Completed: <b>{raidStats["activitiesCleared"]["basic"]["displayValue"]}</b>\n  Kills: <b>{raidStats["kills"]["basic"]["displayValue"]}</b>\n  Deaths: <b>{raidStats["deaths"]["basic"]["value"]}</b>\n  K/D: <b>{raidStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>\n  KA/D: <b>{raidStats["killsDeathsAssists"]["basic"]["displayValue"]}</b>\n'
+            raidResultStr = f"""<b>Raid Stats</b> \U00002620
+    <i>=></i>Raids Completed: <b>{raidStats["activitiesCleared"]["basic"]["displayValue"]}</b>
+        Kills: <b>{raidStats["kills"]["basic"]["displayValue"]}</b>
+        Deaths: <b>{raidStats["deaths"]["basic"]["value"]}</b>
+        K/D: <b>{raidStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>
+        KA/D: <b>{raidStats["killsDeathsAssists"]["basic"]["displayValue"]}</b>\n"""
             url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=900'
             raidStatRequest = requests.get(
                 url, headers=headers).json()['Response']['profileRecords']['data']['records']
@@ -281,7 +360,8 @@ def getRaidStats(update: Update, context: CallbackContext):
         logger.error(
             f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
-            chat_id=update.effective_chat.id, text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
+            chat_id=update.effective_chat.id,
+            text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
         return
     finally:
         if connection:
@@ -299,7 +379,8 @@ def getGambitStats(update: Update, context: CallbackContext):
         if update.callback_query != None:
             update.callback_query.answer()
         connection = psycopg2.connect(
-            host=os.getenv('dbHost'), user=os.getenv('dbUser'), password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
+            host=os.getenv('dbHost'), user=os.getenv('dbUser'),
+            password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
         connection.autocommit = True
         logger.debug('DB connetced succesfully')
         with connection.cursor() as cursor:
@@ -311,7 +392,15 @@ def getGambitStats(update: Update, context: CallbackContext):
             url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Character/0/Stats/'
             gambitStats = requests.get(
                 url, headers=headers).json()['Response']['allPvECompetitive']['allTime']
-            message = f'<b>Gambit Stats</b> \U0001F98E\n <i>=></i>Matches: <b>{gambitStats["activitiesEntered"]["basic"]["displayValue"]}</b>\n  Wins: <b>{gambitStats["activitiesWon"]["basic"]["displayValue"]}</b>\n  Win Rate: <b>{round((gambitStats["activitiesWon"]["basic"]["value"]/gambitStats["activitiesEntered"]["basic"]["value"]) * 100, 2)}</b>\n  Kills: <b>{gambitStats["kills"]["basic"]["displayValue"]}</b>\n  Deaths: <b>{gambitStats["deaths"]["basic"]["displayValue"]}</b>\n  K/D: <b>{gambitStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>\n  KA/D: <b>{gambitStats["killsDeathsAssists"]["basic"]["displayValue"]}</b>\n  Invasion Kills: <b>{gambitStats["invasionKills"]["basic"]["displayValue"]}</b>'
+            message = f"""<b>Gambit Stats</b> \U0001F98E
+    <i>=></i>Matches: <b>{gambitStats["activitiesEntered"]["basic"]["displayValue"]}</b>
+        Wins: <b>{gambitStats["activitiesWon"]["basic"]["displayValue"]}</b>
+        Win Rate: <b>{round((gambitStats["activitiesWon"]["basic"]["value"]/gambitStats["activitiesEntered"]["basic"]["value"]) * 100, 2)}</b>
+        Kills: <b>{gambitStats["kills"]["basic"]["displayValue"]}</b>
+        Deaths: <b>{gambitStats["deaths"]["basic"]["displayValue"]}</b>
+        K/D: <b>{gambitStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>
+        KA/D: <b>{gambitStats["killsDeathsAssists"]["basic"]["displayValue"]}</b>
+        Invasion Kills: <b>{gambitStats["invasionKills"]["basic"]["displayValue"]}</b>"""
         context.bot.send_message(
             chat_id=update.effective_chat.id, text=message, parse_mode='HTML')
         context.bot.send_message(
@@ -320,7 +409,8 @@ def getGambitStats(update: Update, context: CallbackContext):
         logger.error(
             f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
-            chat_id=update.effective_chat.id, text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
+            chat_id=update.effective_chat.id,
+            text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
         return
     finally:
         if connection:
@@ -331,7 +421,8 @@ def getGambitStats(update: Update, context: CallbackContext):
 def unkownReply(update: Update, context: CallbackContext):
     logger.debug('Unknown message received')
     context.bot.send_message(
-        chat_id=update.effective_chat.id, text="Unfortunately, I don't know how to answer this request \U0001F61E.\nYou may contact @kr1sel if the bot is broken.")
+        chat_id=update.effective_chat.id,
+        text="Unfortunately, I don't know how to answer this request \U0001F61E.\nYou may contact @kr1sel if the bot is broken.")
 
 
 # def cancel(context: CallbackContext):
