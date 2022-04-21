@@ -58,7 +58,6 @@ def findBungieUser(update: Update, context: CallbackContext):
     return FINDUSER
 
 
-# TODO add checks for users with two-factor
 # TODO fix stats
 def startWorkWithUser(update: Update, context: CallbackContext):
     logger.debug('Start work with user function entred')
@@ -155,6 +154,8 @@ def startWorkWithUser(update: Update, context: CallbackContext):
 # TODO make stickers to send as a xur location
 def whereIsXur(update: Update, context: CallbackContext):
     logger.debug('Entering whereIsXur command')
+    context.bot.send_message(
+        chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     url = 'https://www.bungie.net/Platform/Destiny2/3/Profile/4611686018505337419/Character/2305843009665375420/Vendors/2190858386/?components=400'
     accessToken = getAccessToken()
     headers = {
@@ -163,7 +164,7 @@ def whereIsXur(update: Update, context: CallbackContext):
     }
     logger.debug(f'Acces token received {accessToken}')
     response = requests.request("GET", url, headers=headers).json()
-    if response['ErrorCode'] == '1627':
+    if response['ErrorCode'] == 1627:
         logger.debug('Xur is not on the place currently')
         context.bot.send_message(
             chat_id=update.effective_chat.id, text='Xûr is not available right now')
@@ -228,7 +229,11 @@ def legendaryLostSector(update: Update, context: CallbackContext):
 
 def getRaidStats(update: Update, context: CallbackContext):
     logger.debug('Getting raid stats')
+    context.bot.send_message(
+        chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     try:
+        if update.callback_query is not None:
+            update.callback_query.edit_message_reply_markup(None)
         if update.callback_query != None:
             update.callback_query.answer()
         connection = psycopg2.connect(
@@ -278,7 +283,11 @@ def getRaidStats(update: Update, context: CallbackContext):
 
 def getGambitStats(update: Update, context: CallbackContext):
     logger.debug('Getting gambit stats')
+    context.bot.send_message(
+        chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     try:
+        if update.callback_query is not None:
+            update.callback_query.edit_message_reply_markup(None)
         if update.callback_query != None:
             update.callback_query.answer()
         connection = psycopg2.connect(
