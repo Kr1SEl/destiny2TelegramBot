@@ -427,8 +427,8 @@ def weeklyreset(update: Update, context: CallbackContext):
 # todo build db accordingly to ls location
 def legendaryLostSector(update: Update, context: CallbackContext):
     logger.debug('Entering lostSector command')
-    context.bot.send_message(
-        '\U0001FA90 Feature is currently in development. Please, be patient!')
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text='\U0001FA90 Feature is currently in development. Please, be patient!')
     pass
 
 
