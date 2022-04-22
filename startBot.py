@@ -292,14 +292,14 @@ def recentSearch(update: Update, context: CallbackContext):
             connection.close()
 
 
-# TODO find out params and locations
+# TODO pretty out all data
 def whereIsXur(update: Update, context: CallbackContext):
     logger.debug('Entering whereIsXur command')
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     today = datetime.datetime.now(tz=pytz.UTC)
     logger.debug(f'Current time: {today}')
-    url = 'https://www.bungie.net/Platform/Destiny2/3/Profile/4611686018505337419/Character/2305843009665375420/Vendors/2190858386/?components=400'
+    url = 'https://www.bungie.net/Platform/Destiny2/3/Profile/4611686018505337419/Character/2305843009665375420/Vendors/2190858386/?components=400,402'
     accessToken = getAccessToken()
     headers = {
         'X-API-KEY': os.getenv('D2TOKEN'),
@@ -580,13 +580,13 @@ def possibleUserStats():
 
 
 ##################################################### HANDLERS ###########################################################################################
-dispatcher.add_handler(CommandHandler('start', startChat))
-dispatcher.add_handler(CommandHandler('help', helpUser))
-dispatcher.add_handler(CommandHandler('recentsearch', recentSearch))
-dispatcher.add_handler(CommandHandler('whereisxur', whereIsXur))
-dispatcher.add_handler(CommandHandler('xurnotifier', xurNotifier))
-dispatcher.add_handler(CommandHandler('stopxurnotifier', stopXurNotifier))
-dispatcher.add_handler(CommandHandler('lostsector', legendaryLostSector))
+dispatcher.add_handler(CommandHandler('start', startchat))
+dispatcher.add_handler(CommandHandler('help', helpuser))
+dispatcher.add_handler(CommandHandler('recentsearch', recentsearch))
+dispatcher.add_handler(CommandHandler('whereisxur', whereisxur))
+dispatcher.add_handler(CommandHandler('xurnotifier', xurnotifier))
+dispatcher.add_handler(CommandHandler('stopxurnotifier', stopxurnotifier))
+dispatcher.add_handler(CommandHandler('lostsector', legendarylostsector))
 dispatcher.add_handler(CommandHandler('weeklyreset', weeklyreset))
 dispatcher.add_handler(ConversationHandler(
     entry_points=[CommandHandler('findGuardian', findBungieUser)],

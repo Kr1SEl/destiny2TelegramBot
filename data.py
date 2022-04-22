@@ -6,7 +6,6 @@ classes = {
 }
 
 # Use profile records to obtain data
-
 raids = {
     '\U0001F98B Vow of the Disciple': '2168422218',
     '\U0001F48E Vault of Glass': '3114569402',
@@ -21,10 +20,29 @@ raids = {
 }
 
 locations = {
-    'European Dead Zone': '3747705955',
-    'Tower': '3747705955',
-    'Nessus': 'unknown'
+    'European Dead Zone': '697502628',
+    'Tower': '1737926756',
+    'Nessus': '3607432451'
 }
+
+# indexes are important!!!
+locations = ['Tower', 'EDZ', 'Nessus']
+
+#    "locations": [
+#        {
+#            "backgroundImagePath": "/img/destiny_content/pgcr/conceptual_xur.jpg",
+#            "destinationHash": 1737926756 -- TOWER
+#        },
+#        {
+#            "backgroundImagePath": "/img/destiny_content/pgcr/conceptual_xur.jpg",
+#            "destinationHash": 697502628  -- EMZ
+#        },
+#        {
+#            "backgroundImagePath": "/img/destiny_content/pgcr/conceptual_xur.jpg",
+#            "destinationHash": 3607432451 -- NESSUS
+#        }
+#    ]
+
 
 statHashes = {
     'Crucible Matches': '4181381577',
