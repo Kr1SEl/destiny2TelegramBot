@@ -293,20 +293,12 @@ def recentSearch(update: Update, context: CallbackContext):
 
 
 # TODO find out params and locations
-# TODO make stickers to send as a xur location
 def whereIsXur(update: Update, context: CallbackContext):
     logger.debug('Entering whereIsXur command')
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     today = datetime.datetime.now(tz=pytz.UTC)
     logger.debug(f'Current time: {today}')
-    context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=f"""\U0001F4A0 The next weekly reset will be held in 
-    <b>{format_timespan((nextDate-today).total_seconds())}</b>
-<i>=></i>
-    <b>{dateStr[:len(dateStr)-4]}, UTC</b>""",
-        parse_mode='HTML')
     url = 'https://www.bungie.net/Platform/Destiny2/3/Profile/4611686018505337419/Character/2305843009665375420/Vendors/2190858386/?components=400'
     accessToken = getAccessToken()
     headers = {
@@ -317,7 +309,7 @@ def whereIsXur(update: Update, context: CallbackContext):
     response = requests.request("GET", url, headers=headers).json()
     if response['ErrorCode'] == 1627:
         logger.debug('Xur is NOT avaliable right now')
-        nextDate = today + datetime.timedelta(days=(4-today.weekday()), weeks=1, hours=(17-today.hour),
+        nextDate = today + datetime.timedelta(days=(4-today.weekday()) % 7, hours=(17-today.hour),
                                               minutes=(0-today.minute), seconds=(0-today.second))
         logger.debug(f'Time when Xur appears next time: {nextDate}')
         dateStr = str(nextDate.ctime())
@@ -326,10 +318,10 @@ def whereIsXur(update: Update, context: CallbackContext):
 He will arrive in:
     <b>{format_timespan((nextDate-today).total_seconds())}</b>
 <i>=></i>
-    <b>{dateStr[:len(dateStr)-4]}, UTC</b>""")
+    <b>{dateStr[:len(dateStr)-4]}, UTC</b>""", parse_mode='HTML')
     else:
         logger.debug('Xur is avaliable')
-        nextDate = today + datetime.timedelta(days=(1-today.weekday()), weeks=1, hours=(17-today.hour),
+        nextDate = today + datetime.timedelta(days=(1-today.weekday()) % 7, hours=(17-today.hour),
                                               minutes=(0-today.minute), seconds=(0-today.second))
         logger.debug(f'Time when Xur appears next time: {nextDate}')
         dateStr = str(nextDate.ctime())
@@ -419,7 +411,7 @@ def weeklyreset(update: Update, context: CallbackContext):
     logger.debug('Entering weekly reset command')
     today = datetime.datetime.now(tz=pytz.UTC)
     logger.debug(f'Current time: {today}')
-    nextDate = today + datetime.timedelta(days=(1-today.weekday()), weeks=1, hours=(17-today.hour),
+    nextDate = today + datetime.timedelta(days=(1-today.weekday()) % 7, hours=(17-today.hour),
                                           minutes=(0-today.minute), seconds=(0-today.second))
     logger.debug(f'Time of the next reset: {nextDate}')
     dateStr = str(nextDate.ctime())
