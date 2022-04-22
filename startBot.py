@@ -16,6 +16,7 @@ from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandle
 # TODO recently searched function
 # TODO learn python lambda
 # TODO is possible to notify after each commit to reset notifiers?
+# TODO implement /weeklyreset - shows time until weekly reset
 ##################################################### CONFIGURATION #####################################################################################
 # logging configuration
 logging.basicConfig(level='DEBUG', format='%(levelname)s %(message)s')
@@ -54,11 +55,14 @@ def helpUser(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text=f"""\U0001F310 <b>{context.bot.get_me().first_name}</b> was developed to help Destiny 2 players to protect the Last City!\n
 List of commands:\n\n<b>Stat Monitor</b>\n
-/findGuardian - find user using BungieID
-/recentSearch - obtain stats for last searched user\n
-<b>Useful commands</b>\n\n/whereIsXur - gives current Xûr location and items
-/xurNotifier - turns on notifications about Xûr's arrival
-/stopXurNotifier - stops notifications about Xûr's arrival""", parse_mode='HTML')
+/findguardian - find user using BungieID
+/recentsearch - obtain stats for last searched user\n
+<b>Useful commands</b>\n
+/weeklyreset - shows time till the weekly reset
+/legendarylostsector - shows information about today's Legendary Lost Sector
+/whereisxur - gives current Xûr location and items
+/xurnotifier - turns on notifications about Xûr's arrival
+/stopxurnotifier - stops notifications about Xûr's arrival""", parse_mode='HTML')
 
 
 def findBungieUser(update: Update, context: CallbackContext):
