@@ -7,16 +7,16 @@ import pytz
 import logging
 import psycopg2
 import datetime
+from humanfriendly import format_timespan
 from oAuth_v2 import getAccessToken
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
 
 # TODO language select
-# TODO recently searched function
 # TODO learn python lambda
 # TODO is possible to notify after each commit to reset notifiers?
-# TODO implement /weeklyreset - shows time until weekly reset
+# TODO implement /weeklyreset, /whereisxur and /lostsector
 ##################################################### CONFIGURATION #####################################################################################
 # logging configuration
 logging.basicConfig(level='DEBUG', format='%(levelname)s %(message)s')
@@ -38,7 +38,7 @@ FINDUSER = range(1)
 
 ################################################### BOT #####################################################################################
 def startChat(update: Update, context: CallbackContext):
-    logger.debug('Strart chat function entred')
+    logger.debug('Entering strartChat command')
     sticker = open('stickers/hello.webp', 'rb')
     context.bot.send_sticker(chat_id=update.effective_chat.id, sticker=sticker)
     context.bot.send_message(
@@ -50,8 +50,8 @@ To find out all possible commands send /help""", parse_mode='HTML')
 # unicode Earth
 
 
-# TODO update with every new command
 def helpUser(update: Update, context: CallbackContext):
+    logger.debug('Entering helpUser command')
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text=f"""\U0001F310 <b>{context.bot.get_me().first_name}</b> was developed to help Destiny 2 players to protect the Last City!\n
 List of commands:\n\n<b>Stat Monitor</b>\n
@@ -59,14 +59,14 @@ List of commands:\n\n<b>Stat Monitor</b>\n
 /recentsearch - obtain stats for last searched user\n
 <b>Useful commands</b>\n
 /weeklyreset - shows time till the weekly reset
-/legendarylostsector - shows information about today's Legendary Lost Sector
+/lostsector - shows information about today's Legendary Lost Sector
 /whereisxur - gives current Xûr location and items
 /xurnotifier - turns on notifications about Xûr's arrival
 /stopxurnotifier - stops notifications about Xûr's arrival""", parse_mode='HTML')
 
 
 def findBungieUser(update: Update, context: CallbackContext):
-    logger.debug('Find Bungie user function entred')
+    logger.debug('Entering findBungieUser command')
     if update.callback_query != None:
         update.callback_query.answer()
     if update.callback_query is not None:
@@ -79,7 +79,7 @@ def findBungieUser(update: Update, context: CallbackContext):
 
 # TODO fix stats
 def getInitialUserStats(context: CallbackContext):
-    logger.debug('getInitialUserStats job entred')
+    logger.debug('Entering getInitialUserStats job')
     try:
         connection = psycopg2.connect(
             host=os.getenv('dbHost'), user=os.getenv('dbUser'),
@@ -163,7 +163,7 @@ def getInitialUserStats(context: CallbackContext):
 
 
 def startWorkWithUser(update: Update, context: CallbackContext):
-    logger.debug('Start work with user function entred')
+    logger.debug('Entering startWorkWithUser command')
     try:
         connection = psycopg2.connect(
             host=os.getenv('dbHost'), user=os.getenv('dbUser'),
@@ -253,7 +253,7 @@ def proceedWithUser(update: Update, context: CallbackContext):
 
 
 def recentSearch(update: Update, context: CallbackContext):
-    logger.debug('recentSearch command entred')
+    logger.debug('Entering recentSearch command')
     try:
         if update.callback_query != None:
             update.callback_query.answer()
@@ -319,7 +319,7 @@ def whereIsXur(update: Update, context: CallbackContext):
 
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
-    logger.debug('Remove job if exists function entred')
+    logger.debug('Entering remove_job_if_exists function ')
     arrivalJob = context.job_queue.get_jobs_by_name(
         f'xur:{name}')
     leaveJob = context.job_queue.get_jobs_by_name(
@@ -354,6 +354,7 @@ To find out his location and item pool write /whereIsXur.""",
 
 # using UTC - (my time - 3h)
 def xurNotifier(update: Update, context: CallbackContext):
+    logger.debug('Entering xurNotifier function')
     current_jobs = context.job_queue.get_jobs_by_name(
         f'xur:{update.effective_chat.id}')
     logger.debug(f'Current jobs: {current_jobs}')
@@ -362,7 +363,6 @@ def xurNotifier(update: Update, context: CallbackContext):
                                  text='\U0001F6AB <b>Xûr Notifier</b> is set already!\nYou will be every time every time he appears in the game. To stop <b>Xûr Notifier</b> write /stopXurNotifier',
                                  parse_mode='HTML')
         return
-    logger.debug('Xûr Notifier function entred')
     logger.debug(f'Chat id {update.effective_chat.id}')
     timeToNotify = datetime.time(
         hour=17, minute=00, second=30, tzinfo=pytz.UTC)
@@ -377,7 +377,7 @@ def xurNotifier(update: Update, context: CallbackContext):
 
 
 def stopXurNotifier(update: Update, context: CallbackContext):
-    logger.debug('Stop notification function entred')
+    logger.debug('Entering stopNotification command')
     job_removed = remove_job_if_exists(
         f'{update.effective_chat.id}', context)
     text = ''
@@ -390,13 +390,33 @@ def stopXurNotifier(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id, text=text, parse_mode='HTML')
 
 
+def weeklyreset(update: Update, context: CallbackContext):
+    logger.debug('Entering weekly reset command')
+    today = datetime.datetime.now(tz=pytz.UTC)
+    logger.debug(f'Current time: {today}')
+    nextDate = today + datetime.timedelta(days=(1-today.weekday()), weeks=1, hours=(17-today.hour),
+                                          minutes=(0-today.minute), seconds=(0-today.second))
+    logger.debug(f'Time of the next reset: {nextDate}')
+    dateStr = str(nextDate.ctime())
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"""\U0001F4A0 The next weekly reset will be held in 
+    <b>{format_timespan((nextDate-today).total_seconds())}</b>
+<i>=></i>
+    <b>{dateStr[:len(dateStr)-4]}, UTC</b>""",
+        parse_mode='HTML')
+
+
+# todo build db accordingly to ls location
 def legendaryLostSector(update: Update, context: CallbackContext):
-    # todo build db accordingly to ls location
+    logger.debug('Entering lostSector command')
+    context.bot.send_message(
+        '\U0001FA90 Feature is currently in development. Please, be patient!')
     pass
 
 
 def getRaidStats(update: Update, context: CallbackContext):
-    logger.debug('Getting raid stats')
+    logger.debug('Entering getRaidStats command')
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     try:
@@ -457,7 +477,7 @@ def getRaidStats(update: Update, context: CallbackContext):
 
 
 def getGambitStats(update: Update, context: CallbackContext):
-    logger.debug('Getting gambit stats')
+    logger.debug('Entering getGambitStats command')
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     try:
@@ -506,12 +526,13 @@ def getGambitStats(update: Update, context: CallbackContext):
 
 
 def unkownReply(update: Update, context: CallbackContext):
-    logger.debug('Unknown message received')
+    logger.debug('Entering unknownReply command')
     context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Unfortunately, I don't know how to answer this request \U0001F61E.\nYou may contact @kr1sel if the bot is broken.")
 
 
+# TODO find out about fallbacks
 # def cancel(context: CallbackContext):
 #     user = update.message.from_user
 #     logger.debug("User %s canceled the conversation.", user.first_name)
@@ -544,11 +565,12 @@ def possibleUserStats():
 ##################################################### HANDLERS ###########################################################################################
 dispatcher.add_handler(CommandHandler('start', startChat))
 dispatcher.add_handler(CommandHandler('help', helpUser))
-dispatcher.add_handler(CommandHandler('recentSearch', recentSearch))
-dispatcher.add_handler(CommandHandler('whereIsXur', whereIsXur))
-dispatcher.add_handler(CommandHandler('xurNotifier', xurNotifier))
-dispatcher.add_handler(CommandHandler('stopXurNotifier', stopXurNotifier))
-dispatcher.add_handler(CommandHandler('lostSector', legendaryLostSector))
+dispatcher.add_handler(CommandHandler('recentsearch', recentSearch))
+dispatcher.add_handler(CommandHandler('whereisxur', whereIsXur))
+dispatcher.add_handler(CommandHandler('xurnotifier', xurNotifier))
+dispatcher.add_handler(CommandHandler('stopxurnotifier', stopXurNotifier))
+dispatcher.add_handler(CommandHandler('lostsector', legendaryLostSector))
+dispatcher.add_handler(CommandHandler('weeklyreset', weeklyreset))
 dispatcher.add_handler(ConversationHandler(
     entry_points=[CommandHandler('findGuardian', findBungieUser)],
     states={
