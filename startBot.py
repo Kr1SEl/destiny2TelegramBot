@@ -298,6 +298,15 @@ def whereIsXur(update: Update, context: CallbackContext):
     logger.debug('Entering whereIsXur command')
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
+    today = datetime.datetime.now(tz=pytz.UTC)
+    logger.debug(f'Current time: {today}')
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"""\U0001F4A0 The next weekly reset will be held in 
+    <b>{format_timespan((nextDate-today).total_seconds())}</b>
+<i>=></i>
+    <b>{dateStr[:len(dateStr)-4]}, UTC</b>""",
+        parse_mode='HTML')
     url = 'https://www.bungie.net/Platform/Destiny2/3/Profile/4611686018505337419/Character/2305843009665375420/Vendors/2190858386/?components=400'
     accessToken = getAccessToken()
     headers = {
@@ -307,13 +316,29 @@ def whereIsXur(update: Update, context: CallbackContext):
     logger.debug(f'Acces token received {accessToken}')
     response = requests.request("GET", url, headers=headers).json()
     if response['ErrorCode'] == 1627:
-        logger.debug('Xur is not on the place currently')
+        logger.debug('Xur is NOT avaliable right now')
+        nextDate = today + datetime.timedelta(days=(4-today.weekday()), weeks=1, hours=(17-today.hour),
+                                              minutes=(0-today.minute), seconds=(0-today.second))
+        logger.debug(f'Time when Xur appears next time: {nextDate}')
+        dateStr = str(nextDate.ctime())
         context.bot.send_message(
-            chat_id=update.effective_chat.id, text='Xûr is not available right now')
+            chat_id=update.effective_chat.id, text=f"""Xûr is not available right now. 
+He will arrive in:
+    <b>{format_timespan((nextDate-today).total_seconds())}</b>
+<i>=></i>
+    <b>{dateStr[:len(dateStr)-4]}, UTC</b>""")
     else:
         logger.debug('Xur is avaliable')
+        nextDate = today + datetime.timedelta(days=(1-today.weekday()), weeks=1, hours=(17-today.hour),
+                                              minutes=(0-today.minute), seconds=(0-today.second))
+        logger.debug(f'Time when Xur appears next time: {nextDate}')
+        dateStr = str(nextDate.ctime())
         context.bot.send_message(
-            chat_id=update.effective_chat.id, text='Xûr is avaliable on Destiny!')
+            chat_id=update.effective_chat.id, text=f"""Xûr is avaliable on Destiny! 
+He will leave with the weekly reset in:
+    <b>{format_timespan((nextDate-today).total_seconds())}</b>
+<i>=></i>
+    <b>{dateStr[:len(dateStr)-4]}, UTC</b>""", parse_mode='HTML')
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=response)
 
