@@ -44,7 +44,7 @@ def startChat(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id, text=f"""Hello, Guardian!
 I'm a <b>{context.bot.get_me().first_name}</b> \U0001F30D.
 I was created to help Destiny 2 players check their statistics.
-To find user send command /findguardian.
+To find user send command /findGuardian.
 To find out all possible commands send /help""", parse_mode='HTML')
 # unicode Earth
 
@@ -54,7 +54,8 @@ def helpUser(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text=f"""\U0001F310 <b>{context.bot.get_me().first_name}</b> was developed to help Destiny 2 players to protect the Last City!\n
 List of commands:\n\n<b>Stat Monitor</b>\n
-/findguardian - find user using BungieID\n
+/findGuardian - find user using BungieID
+/recentSearch - obtain stats for last searched user\n
 <b>Useful commands</b>\n\n/whereIsXur - gives current Xûr location and items
 /xurNotifier - turns on notifications about Xûr's arrival
 /stopXurNotifier - stops notifications about Xûr's arrival""", parse_mode='HTML')
@@ -62,6 +63,8 @@ List of commands:\n\n<b>Stat Monitor</b>\n
 
 def findBungieUser(update: Update, context: CallbackContext):
     logger.debug('Find Bungie user function entred')
+    if update.callback_query != None:
+        update.callback_query.answer()
     if update.callback_query is not None:
         update.callback_query.edit_message_reply_markup(None)
     # unicode magic ball
@@ -144,10 +147,10 @@ def getInitialUserStats(context: CallbackContext):
             job.context, text=strResults, parse_mode='HTML')
         context.bot.send_message(
             job.context, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
-    except (psycopg2.OperationalError, psycopg2.errors.LockNotAvailable) as ex:
+    except (psycopg2.OperationalError, psycopg2.errors.InFailedSqlTransaction) as ex:
         logger.error(f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
-            job.context, text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
+            job.context, text="\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out what's wrong!")  # unicode ERROR
         return
     finally:
         if connection:
@@ -222,11 +225,62 @@ def startWorkWithUser(update: Update, context: CallbackContext):
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text='\U0001F6AB Invalid Bungie name!\n(Example: Name#0123)',
                 reply_markup=tryAgainKeyboard())  # unicode ERROR
-    except (psycopg2.OperationalError, psycopg2.errors.LockNotAvailable) as ex:
+    except (psycopg2.OperationalError, psycopg2.errors.InFailedSqlTransaction) as ex:
         logger.error(f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
+            text="\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out what's wrong!")  # unicode ERROR
+        return
+    finally:
+        if connection:
+            logger.debug('Closing DB connection')
+            connection.close()
+
+
+def proceedWithUser(update: Update, context: CallbackContext):
+    if update.callback_query != None:
+        update.callback_query.answer()
+    if update.callback_query is not None:
+        update.callback_query.edit_message_reply_markup(None)
+    context.bot.send_message(
+        chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
+    job.run_once(getInitialUserStats, 0,
+                 context=update.effective_chat.id)
+
+
+def recentSearch(update: Update, context: CallbackContext):
+    logger.debug('recentSearch command entred')
+    try:
+        if update.callback_query != None:
+            update.callback_query.answer()
+        if update.callback_query is not None:
+            update.callback_query.edit_message_reply_markup(None)
+        connection = psycopg2.connect(
+            host=os.getenv('dbHost'), user=os.getenv('dbUser'),
+            password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
+        connection.autocommit = True
+        logger.debug('DB connetced succesfully')
+        with connection.cursor() as cursor:
+            cursor.execute(f"""SELECT membershipid, membershiptype
+                           FROM users
+                           WHERE chat_id = \'{update.effective_chat.id}\'""")
+            cursorReminder = cursor.fetchone()
+            if cursorReminder == None:
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id, text="\U0001F6AB Looks like you did not use /finduser command before!")
+            else:
+                membershipId = cursorReminder[0]
+                membershipType = cursorReminder[1]
+                url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{membershipId}/?components=100'
+                userData = requests.get(
+                    url, headers=headers).json()['Response']['profile']['data']['userInfo']
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id, text=f"\U00002B50 Last searched user <b>{userData['bungieGlobalDisplayName']}#{userData['bungieGlobalDisplayNameCode']}</b>.\nWould you like to proceed?", parse_mode='HTML', reply_markup=recentSearchReply())
+    except (psycopg2.OperationalError, psycopg2.errors.InFailedSqlTransaction) as ex:
+        logger.error(f'Exeption {ex} when trying to connect to DataBase')
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out what's wrong!")  # unicode ERROR
         return
     finally:
         if connection:
@@ -342,10 +396,10 @@ def getRaidStats(update: Update, context: CallbackContext):
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     try:
-        if update.callback_query is not None:
-            update.callback_query.edit_message_reply_markup(None)
         if update.callback_query != None:
             update.callback_query.answer()
+        if update.callback_query is not None:
+            update.callback_query.edit_message_reply_markup(None)
         connection = psycopg2.connect(
             host=os.getenv('dbHost'), user=os.getenv('dbUser'),
             password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
@@ -390,7 +444,7 @@ def getRaidStats(update: Update, context: CallbackContext):
             f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
+            text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out  wrong!')  # unicode ERROR
         return
     finally:
         if connection:
@@ -403,10 +457,10 @@ def getGambitStats(update: Update, context: CallbackContext):
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     try:
-        if update.callback_query is not None:
-            update.callback_query.edit_message_reply_markup(None)
         if update.callback_query != None:
             update.callback_query.answer()
+        if update.callback_query is not None:
+            update.callback_query.edit_message_reply_markup(None)
         connection = psycopg2.connect(
             host=os.getenv('dbHost'), user=os.getenv('dbUser'),
             password=os.getenv('dbPassword'), port=os.getenv('dbPort'), dbname=os.getenv('dbName'))
@@ -439,7 +493,7 @@ def getGambitStats(update: Update, context: CallbackContext):
             f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out whats wrong!')  # unicode ERROR
+            text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out  wrong!')  # unicode ERROR
         return
     finally:
         if connection:
@@ -470,6 +524,12 @@ def tryAgainKeyboard():
     return InlineKeyboardMarkup(keyboard)
 
 
+def recentSearchReply():
+    keyboard = [[InlineKeyboardButton("Show Stats \U0001F680", callback_data='proceedWithUser')],  # unicode ROCKET
+                [InlineKeyboardButton("\U0001F52E Find another Guardian", callback_data='anotherUser')]]
+    return InlineKeyboardMarkup(keyboard)
+
+
 def possibleUserStats():
     keyboard = [[InlineKeyboardButton("Raids \U0001F680", callback_data='raid'),  # unicode ROCKET
                  InlineKeyboardButton("Gambit \U0001F680", callback_data='gambit')],  # unicode ROCKET
@@ -480,24 +540,27 @@ def possibleUserStats():
 ##################################################### HANDLERS ###########################################################################################
 dispatcher.add_handler(CommandHandler('start', startChat))
 dispatcher.add_handler(CommandHandler('help', helpUser))
+dispatcher.add_handler(CommandHandler('recentSearch', recentSearch))
 dispatcher.add_handler(CommandHandler('whereIsXur', whereIsXur))
 dispatcher.add_handler(CommandHandler('xurNotifier', xurNotifier))
 dispatcher.add_handler(CommandHandler('stopXurNotifier', stopXurNotifier))
 dispatcher.add_handler(CommandHandler('lostSector', legendaryLostSector))
 dispatcher.add_handler(ConversationHandler(
-    entry_points=[CommandHandler('findguardian', findBungieUser)],
+    entry_points=[CommandHandler('findGuardian', findBungieUser)],
     states={
         FINDUSER: [MessageHandler(Filters.text & (
             ~Filters.command), startWorkWithUser)]
     },
-    fallbacks=[CommandHandler('findguardian', findBungieUser)],
+    fallbacks=[CommandHandler('findGuardian', findBungieUser)],
 ))
 dispatcher.add_handler(MessageHandler(
-    Filters.text & ~Filters.command, unkownReply))
+    Filters.text & Filters.command, unkownReply))
 dispatcher.add_handler(CallbackQueryHandler(
     findBungieUser, pattern='tryAgain'))
 dispatcher.add_handler(CallbackQueryHandler(
     getRaidStats, pattern='raid'))
+dispatcher.add_handler(CallbackQueryHandler(
+    proceedWithUser, pattern='proceedWithUser'))
 dispatcher.add_handler(CallbackQueryHandler(
     getGambitStats, pattern='gambit'))
 dispatcher.add_handler(CallbackQueryHandler(
