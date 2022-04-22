@@ -13,6 +13,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
 
 # TODO language select
+# TODO recently searched function
+# TODO learn python lambda
+# TODO is possible to notify after each commit to reset notifiers?
 ##################################################### CONFIGURATION #####################################################################################
 # logging configuration
 logging.basicConfig(level='DEBUG', format='%(levelname)s %(message)s')
@@ -41,7 +44,8 @@ def startChat(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id, text=f"""Hello, Guardian!
 I'm a <b>{context.bot.get_me().first_name}</b> \U0001F30D.
 I was created to help Destiny 2 players check their statistics.
-To find user send command <i>/findguardian</i>.""", parse_mode='HTML')
+To find user send command /findguardian.
+To find out all possible commands send /help""", parse_mode='HTML')
 # unicode Earth
 
 
@@ -66,6 +70,7 @@ def findBungieUser(update: Update, context: CallbackContext):
     return FINDUSER
 
 
+# TODO fix stats
 def getInitialUserStats(context: CallbackContext):
     logger.debug('getInitialUserStats job entred')
     try:
@@ -150,7 +155,6 @@ def getInitialUserStats(context: CallbackContext):
             connection.close()
 
 
-# TODO fix stats
 def startWorkWithUser(update: Update, context: CallbackContext):
     logger.debug('Start work with user function entred')
     try:
@@ -258,47 +262,72 @@ def whereIsXur(update: Update, context: CallbackContext):
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
     logger.debug('Remove job if exists function entred')
-    current_jobs = context.job_queue.get_jobs_by_name(name)
-    logger.debug(f'Current jobs: {current_jobs}')
-    if not current_jobs:
+    arrivalJob = context.job_queue.get_jobs_by_name(
+        f'xur:{name}')
+    leaveJob = context.job_queue.get_jobs_by_name(
+        f'xurLeaving:{name}')
+    logger.debug(f'Current jobs: {arrivalJob} and {leaveJob}')
+    if not arrivalJob:
         return False
-    for job in current_jobs:
+    for job in arrivalJob:
+        job.schedule_removal()
+    for job in leaveJob:
         job.schedule_removal()
     return True
 
 
 def notifyAboutXur(context: CallbackContext) -> None:
+    logger.debug('Entering notifyAboutXur job')
     job = context.job
     context.bot.send_message(
-        job.context, text='\U0001F4C5 Xûr has arrived!\nTo find out his location and item pool write <i>/whereIsXur</i>.',
+        job.context, text='\U0001F4C5 Xûr has arrived!\nTo find out his location and item pool write /whereIsXur.',
         parse_mode='HTML')
 
 
-# todo make notification 24 hours before xur leaves
+def notifyAboutXurLeaving(context: CallbackContext) -> None:
+    logger.debug('Entering notifyAboutXurLeaving job')
+    job = context.job
+    context.bot.send_message(
+        job.context, text="""\U0001F4C5 Xûr is going to leave soon!
+Visit him if you haven't already.
+To find out his location and item pool write /whereIsXur.""",
+        parse_mode='HTML')
+
+
 # using UTC - (my time - 3h)
 def xurNotifier(update: Update, context: CallbackContext):
+    current_jobs = context.job_queue.get_jobs_by_name(
+        f'xur:{update.effective_chat.id}')
+    logger.debug(f'Current jobs: {current_jobs}')
+    if current_jobs:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text='\U0001F6AB <b>Xûr Notifier</b> is set already!\nYou will be every time every time he appears in the game. To stop <b>Xûr Notifier</b> write /stopXurNotifier',
+                                 parse_mode='HTML')
+        return
     logger.debug('Xûr Notifier function entred')
     logger.debug(f'Chat id {update.effective_chat.id}')
     timeToNotify = datetime.time(
         hour=17, minute=00, second=30, tzinfo=pytz.UTC)
     job.run_daily(callback=notifyAboutXur, days=tuple(
-        [4]), time=timeToNotify, context=update.effective_chat.id, name='xur')
+        [4]), time=timeToNotify, context=update.effective_chat.id, name=f'xur:{update.effective_chat.id}')
+    job.run_daily(callback=notifyAboutXurLeaving, days=tuple(
+        [0]), time=timeToNotify, context=update.effective_chat.id, name=f'xurLeaving:{update.effective_chat.id}')
     logger.debug('Job is set')
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='\U0001F47E <b>Xûr Notifier</b> was succesfully set!\nYou are gonna receive a notification every time he appears in the game',
+                             text='\U0001F47E <b>Xûr Notifier</b> was succesfully set!\nYou are gonna receive a notification every time he appears in the game. To stop <b>Xûr Notifier</b> write /stopXurNotifier',
                              parse_mode='HTML')
 
 
 def stopXurNotifier(update: Update, context: CallbackContext):
     logger.debug('Stop notification function entred')
     job_removed = remove_job_if_exists(
-        'xur', context)
+        f'{update.effective_chat.id}', context)
     text = ''
     logger.debug(f'Job removed: {job_removed}')
     if job_removed:
-        text = "\U00002705 Xûr Notifier was stopped. You won't receive notification anymore. To start notifier again write <i>/xurNotifier</i>. Stay safe, Guardian!"
+        text = "\U00002705 Xûr Notifier was stopped. You won't receive notification anymore. To start notifier again write /xurNotifier. Stay safe, Guardian!"
     else:
-        text = "\U0001F6AB You have no set notifiers. To start Xûr notifier write <i>/xurNotifier</i>."
+        text = "\U0001F6AB You have no set notifiers. To start Xûr notifier write /xurNotifier."
     context.bot.send_message(
         chat_id=update.effective_chat.id, text=text, parse_mode='HTML')
 
