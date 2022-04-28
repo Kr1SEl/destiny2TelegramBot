@@ -381,12 +381,21 @@ def xurNotifier(update: Update, context: CallbackContext):
                                  parse_mode='HTML')
         return
     logger.debug(f'Chat id {update.effective_chat.id}')
-    timeToNotify = datetime.time(
-        hour=17, minute=00, second=30, tzinfo=pytz.UTC)
-    job.run_daily(callback=notifyAboutXur, days=tuple(
-        [4]), time=timeToNotify, context=update.effective_chat.id, name=f'xur:{update.effective_chat.id}')
-    job.run_daily(callback=notifyAboutXurLeaving, days=tuple(
-        [0]), time=timeToNotify, context=update.effective_chat.id, name=f'xurLeaving:{update.effective_chat.id}')
+    logger.debug('Calculate when xur appears')
+    today = datetime.datetime.now(tz=pytz.UTC)
+    nextDate = today + datetime.timedelta(days=(4-today.weekday()) % 7, hours=(17-today.hour),
+                                          minutes=(0-today.minute), seconds=(0-today.second))
+    timeInSecondsXurAppears = (nextDate-today).total_seconds()
+    logger.debug(f'Time till next xur appearent: {timeInSecondsXurAppears}')
+    job.run_repeating(callback=notifyAboutXur, first=timeInSecondsXurAppears, interval=10,
+                      context=update.effective_chat.id, name=f'xur:{update.effective_chat.id}')
+    logger.debug('Calculate when xur leaves')
+    nextDate = today + datetime.timedelta(days=(1-today.weekday()) % 7, hours=(17-today.hour),
+                                          minutes=(0-today.minute), seconds=(0-today.second))
+    timeInSecondsXurLeaves = (nextDate-today).total_seconds()
+    logger.debug(f'Time till next xur appearent: {timeInSecondsXurLeaves}')
+    job.run_repeating(callback=notifyAboutXur, first=timeInSecondsXurLeaves, interval=10,
+                      context=update.effective_chat.id, name=f'xur:{update.effective_chat.id}')
     logger.debug('Job is set')
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text='\U0001F47E <b>Xûr Notifier</b> was succesfully set!\nYou are gonna receive a notification every time he appears in the game. To stop <b>Xûr Notifier</b> write /stopXurNotifier',
@@ -407,7 +416,7 @@ def stopXurNotifier(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id, text=text, parse_mode='HTML')
 
 
-def weeklyreset(update: Update, context: CallbackContext):
+def weeklyReset(update: Update, context: CallbackContext):
     logger.debug('Entering weekly reset command')
     today = datetime.datetime.now(tz=pytz.UTC)
     logger.debug(f'Current time: {today}')
@@ -580,14 +589,14 @@ def possibleUserStats():
 
 
 ##################################################### HANDLERS ###########################################################################################
-dispatcher.add_handler(CommandHandler('start', startchat))
-dispatcher.add_handler(CommandHandler('help', helpuser))
-dispatcher.add_handler(CommandHandler('recentsearch', recentsearch))
-dispatcher.add_handler(CommandHandler('whereisxur', whereisxur))
-dispatcher.add_handler(CommandHandler('xurnotifier', xurnotifier))
-dispatcher.add_handler(CommandHandler('stopxurnotifier', stopxurnotifier))
-dispatcher.add_handler(CommandHandler('lostsector', legendarylostsector))
-dispatcher.add_handler(CommandHandler('weeklyreset', weeklyreset))
+dispatcher.add_handler(CommandHandler('start', startChat))
+dispatcher.add_handler(CommandHandler('help', helpUser))
+dispatcher.add_handler(CommandHandler('recentsearch', recentSearch))
+dispatcher.add_handler(CommandHandler('whereisxur', whereIsXur))
+dispatcher.add_handler(CommandHandler('xurnotifier', xurNotifier))
+dispatcher.add_handler(CommandHandler('stopxurnotifier', stopXurNotifier))
+dispatcher.add_handler(CommandHandler('lostsector', legendaryLostSector))
+dispatcher.add_handler(CommandHandler('weeklyreset', weeklyReset))
 dispatcher.add_handler(ConversationHandler(
     entry_points=[CommandHandler('findGuardian', findBungieUser)],
     states={
