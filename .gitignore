@@ -6,3 +6,4 @@ python_requirments.txt
 test.py
 legacy.py
 backup.py
+config.ini
