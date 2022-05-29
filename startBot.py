@@ -313,11 +313,12 @@ def whereIsXur(update: Update, context: CallbackContext):
         logger.debug(f'Time when Xur appears next time: {nextDate}')
         dateStr = str(nextDate.ctime())
         context.bot.send_message(
-            chat_id=update.effective_chat.id, text=f"""Xûr is not available right now. 
+            chat_id=update.effective_chat.id, text=f"""\U0001F5FF Xûr is not available right now. 
 He will arrive in:
     <b>{format_timespan((nextDate-today).total_seconds())}</b>
 <i>=></i>
-    <b>{dateStr[:len(dateStr)-4]}, UTC</b>""", parse_mode='HTML')
+    <b>{dateStr[:len(dateStr)-4]}, UTC</b> \U000023F1
+Set /xurnotifier so you don't miss his visit \U0001F47E""", parse_mode='HTML')
     else:
         logger.debug('Xur is avaliable')
         location = response['Response']['vendor']['data']['vendorLocationIndex']
@@ -326,12 +327,12 @@ He will arrive in:
         logger.debug(f'Time when Xur appears next time: {nextDate}')
         dateStr = str(nextDate.ctime())
         context.bot.send_message(
-            chat_id=update.effective_chat.id, text=f"""Xûr is avaliable on Destiny!
-He is located in {data.locations[location]}
+            chat_id=update.effective_chat.id, text=f"""\U0001F389 Xûr is avaliable on Destiny!
+You may find him in <b>{data.locations[location]}</b>
 He will leave with the weekly reset in:
     <b>{format_timespan((nextDate-today).total_seconds())}</b>
 <i>=></i>
-    <b>{dateStr[:len(dateStr)-4]}, UTC</b>""", parse_mode='HTML')
+    <b>{dateStr[:len(dateStr)-4]}, UTC</b> \U000023F1""", parse_mode='HTML')
         sticker = open(f'stickers/location{location}.webp', 'rb')
         context.bot.send_sticker(
             chat_id=update.effective_chat.id, sticker=sticker)
@@ -342,9 +343,9 @@ He will leave with the weekly reset in:
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
     logger.debug('Entering remove_job_if_exists function ')
     arrivalJob = context.job_queue.get_jobs_by_name(
-        f'xur:{name}')
+        f'xurAppears:{name}')
     leaveJob = context.job_queue.get_jobs_by_name(
-        f'xurLeaving:{name}')
+        f'xurLeaves:{name}')
     logger.debug(f'Current jobs: {arrivalJob} and {leaveJob}')
     if not arrivalJob:
         return False
@@ -392,14 +393,14 @@ def xurNotifier(update: Update, context: CallbackContext):
     timeInSecondsXurAppears = (nextDate-today).total_seconds()
     logger.debug(f'Time till next xur appearent: {timeInSecondsXurAppears}')
     job.run_repeating(callback=notifyAboutXur, first=timeInSecondsXurAppears, interval=604800,
-                      context=update.effective_chat.id, name=f'xur:{update.effective_chat.id}')
+                      context=update.effective_chat.id, name=f'xurAppears:{update.effective_chat.id}')
     logger.debug('Calculate when xur leaves')
     nextDate = today + datetime.timedelta(days=(1-today.weekday()) % 7, hours=(17-today.hour),
                                           minutes=(0-today.minute), seconds=(0-today.second))
     timeInSecondsXurLeaves = (nextDate-today).total_seconds()
-    logger.debug(f'Time till next xur appearent: {timeInSecondsXurLeaves}')
-    job.run_repeating(callback=notifyAboutXur, first=timeInSecondsXurLeaves, interval=604800,
-                      context=update.effective_chat.id, name=f'xur:{update.effective_chat.id}')
+    logger.debug(f'Time till second xur notifier: {timeInSecondsXurLeaves}')
+    job.run_repeating(callback=notifyAboutXurLeaving, first=timeInSecondsXurLeaves, interval=604800,
+                      context=update.effective_chat.id, name=f'xurLeaves:{update.effective_chat.id}')
     logger.debug('Job is set')
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text='\U0001F47E <b>Xûr Notifier</b> was succesfully set!\nYou are gonna receive a notification every time he appears in the game. To stop <b>Xûr Notifier</b> write /stopXurNotifier',

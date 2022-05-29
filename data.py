@@ -26,7 +26,7 @@ raids = {
 # }
 
 # indexes are important!!!
-locations = ['Tower', 'EDZ', 'Nessus']
+locations = ['Tower \U0001F5FC', 'EDZ \U000026F0', 'Nessus \U0001F4A0']
 
 #    "locations": [
 #        {
