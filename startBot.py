@@ -15,7 +15,7 @@ from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandle
 
 # TODO language select
 # TODO is possible to notify after each commit to reset notifiers?
-# TODO implement /whereisxur and /lostsector
+# TODO implement /lostsector
 ##################################################### CONFIGURATION #####################################################################################
 # logging configuration
 logging.basicConfig(level='DEBUG', format='%(levelname)s %(message)s')
@@ -291,7 +291,33 @@ def recentSearch(update: Update, context: CallbackContext):
             connection.close()
 
 
-# TODO pretty out all data
+def parseXurInventory(xurResponse, chatID, context: CallbackContext) -> bool:
+    logger.debug('Entering parseXurInventory job')
+    context.bot.send_message(
+        chat_id=chatID, text='Xûr brought such exotic items:')
+    saleItems = xurResponse['Response']['sales']['data']
+    exoticItems = list()
+    for key in saleItems.keys():
+        if len(saleItems[key]['costs']) == 1:
+            exoticItems.append(
+                (saleItems[key]['itemHash'], saleItems[key]['costs'][0]['quantity']))
+    exoticItems.pop(0)
+    for item in exoticItems:
+        response = requests.get(
+            f'https://www.bungie.net/Platform/Destiny2/Manifest/DestinyInventoryItemDefinition/{item[0]}', headers=headers).json()["Response"]
+        messageAddition = ''
+        if response["classType"] == 3:
+            messageAddition = f'\U0001F52B {response["itemTypeAndTierDisplayName"]}'
+        else:
+            messageAddition = f'{data.classes[str(response["classType"])]} {response["itemTypeAndTierDisplayName"]}'
+        context.bot.send_message(
+            chat_id=chatID, text=f'{messageAddition}\n<b>{response["displayProperties"]["name"]}</b> - Price: <b>{item[1]}</b> LS \U0001F48E', parse_mode='HTML')
+        imgLink = response["displayProperties"]["icon"]
+        context.bot.send_photo(
+            chatID, f'https://www.bungie.net{imgLink}')
+    return True
+
+
 def whereIsXur(update: Update, context: CallbackContext):
     logger.debug('Entering whereIsXur command')
     context.bot.send_message(
@@ -336,8 +362,10 @@ He will leave with the weekly reset in:
         sticker = open(f'stickers/location{location}.webp', 'rb')
         context.bot.send_sticker(
             chat_id=update.effective_chat.id, sticker=sticker)
-    # context.bot.send_message(
-    #     chat_id=update.effective_chat.id, text=response)
+        logger.debug('Parsing Xur inventory')
+        inventoryParsed = parseXurInventory(
+            response, update.effective_chat.id, context)
+        logger.debug(f'Inventory parsed: {inventoryParsed}')
 
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
@@ -369,7 +397,7 @@ def notifyAboutXurLeaving(context: CallbackContext) -> None:
     job = context.job
     context.bot.send_message(
         job.context, text="""\U0001F4C5 Xûr is going to leave soon!
-Visit him if you haven't already.
+Visit him if you haven't already. \U000023F1
 To find out his location and item pool write /whereIsXur.""",
         parse_mode='HTML')
 
@@ -378,7 +406,7 @@ To find out his location and item pool write /whereIsXur.""",
 def xurNotifier(update: Update, context: CallbackContext):
     logger.debug('Entering xurNotifier function')
     current_jobs = context.job_queue.get_jobs_by_name(
-        f'xur:{update.effective_chat.id}')
+        f'xurAppears:{update.effective_chat.id}')
     logger.debug(f'Current jobs: {current_jobs}')
     if current_jobs:
         context.bot.send_message(chat_id=update.effective_chat.id,
@@ -434,7 +462,7 @@ def weeklyReset(update: Update, context: CallbackContext):
         text=f"""\U0001F4A0 The next weekly reset will be held in 
     <b>{format_timespan((nextDate-today).total_seconds())}</b>
 <i>=></i>
-    <b>{dateStr[:len(dateStr)-4]}, UTC</b>""",
+    <b>{dateStr[:len(dateStr)-4]}, UTC</b> \U000023F1""",
         parse_mode='HTML')
 
 
@@ -479,7 +507,7 @@ def getRaidStats(update: Update, context: CallbackContext):
             raidStatRequest = requests.get(
                 url, headers=headers).json()['Response']['profileRecords']['data']['records']
             logger.debug(f'Getting raid stats from apt {raidStatRequest}')
-            raidResultStr += '<b>Number of activity closures:</b>\n'
+            raidResultStr += '<b>Number of activity closures:</b>\n\n'
             for raid in data.raids:
                 raidStat = raidStatRequest[data.raids[raid]]
                 try:
@@ -489,7 +517,7 @@ def getRaidStats(update: Update, context: CallbackContext):
                         f'{e} \nNo progress value for {raid} - {data.raids[raid]}')
                     progress = 0
                 finally:
-                    raidResultStr += f'{raid}: <b>{progress}</b>\n'
+                    raidResultStr += f'{raid}: <b>{progress}</b>\n\n'
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text=raidResultStr, parse_mode='HTML')
             context.bot.send_message(
