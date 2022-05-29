@@ -19,11 +19,11 @@ raids = {
     '\U0001F3C6 Leviathan': '2266286943'
 }
 
-locations = {
-    'European Dead Zone': '697502628',
-    'Tower': '1737926756',
-    'Nessus': '3607432451'
-}
+# locations = {
+#     'European Dead Zone': '697502628',
+#     'Tower': '1737926756',
+#     'Nessus': '3607432451'
+# }
 
 # indexes are important!!!
 locations = ['Tower', 'EDZ', 'Nessus']

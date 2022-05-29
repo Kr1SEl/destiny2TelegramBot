@@ -14,9 +14,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
 
 # TODO language select
-# TODO learn python lambda
 # TODO is possible to notify after each commit to reset notifiers?
-# TODO implement /weeklyreset, /whereisxur and /lostsector
+# TODO implement /whereisxur and /lostsector
 ##################################################### CONFIGURATION #####################################################################################
 # logging configuration
 logging.basicConfig(level='DEBUG', format='%(levelname)s %(message)s')
@@ -321,18 +320,23 @@ He will arrive in:
     <b>{dateStr[:len(dateStr)-4]}, UTC</b>""", parse_mode='HTML')
     else:
         logger.debug('Xur is avaliable')
+        location = response['Response']['vendor']['data']['vendorLocationIndex']
         nextDate = today + datetime.timedelta(days=(1-today.weekday()) % 7, hours=(17-today.hour),
                                               minutes=(0-today.minute), seconds=(0-today.second))
         logger.debug(f'Time when Xur appears next time: {nextDate}')
         dateStr = str(nextDate.ctime())
         context.bot.send_message(
-            chat_id=update.effective_chat.id, text=f"""Xûr is avaliable on Destiny! 
+            chat_id=update.effective_chat.id, text=f"""Xûr is avaliable on Destiny!
+He is located in {data.locations[location]}
 He will leave with the weekly reset in:
     <b>{format_timespan((nextDate-today).total_seconds())}</b>
 <i>=></i>
     <b>{dateStr[:len(dateStr)-4]}, UTC</b>""", parse_mode='HTML')
-    context.bot.send_message(
-        chat_id=update.effective_chat.id, text=response)
+        sticker = open(f'stickers/location{location}.webp', 'rb')
+        context.bot.send_sticker(
+            chat_id=update.effective_chat.id, sticker=sticker)
+    # context.bot.send_message(
+    #     chat_id=update.effective_chat.id, text=response)
 
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
@@ -387,14 +391,14 @@ def xurNotifier(update: Update, context: CallbackContext):
                                           minutes=(0-today.minute), seconds=(0-today.second))
     timeInSecondsXurAppears = (nextDate-today).total_seconds()
     logger.debug(f'Time till next xur appearent: {timeInSecondsXurAppears}')
-    job.run_repeating(callback=notifyAboutXur, first=timeInSecondsXurAppears, interval=10,
+    job.run_repeating(callback=notifyAboutXur, first=timeInSecondsXurAppears, interval=604800,
                       context=update.effective_chat.id, name=f'xur:{update.effective_chat.id}')
     logger.debug('Calculate when xur leaves')
     nextDate = today + datetime.timedelta(days=(1-today.weekday()) % 7, hours=(17-today.hour),
                                           minutes=(0-today.minute), seconds=(0-today.second))
     timeInSecondsXurLeaves = (nextDate-today).total_seconds()
     logger.debug(f'Time till next xur appearent: {timeInSecondsXurLeaves}')
-    job.run_repeating(callback=notifyAboutXur, first=timeInSecondsXurLeaves, interval=10,
+    job.run_repeating(callback=notifyAboutXur, first=timeInSecondsXurLeaves, interval=604800,
                       context=update.effective_chat.id, name=f'xur:{update.effective_chat.id}')
     logger.debug('Job is set')
     context.bot.send_message(chat_id=update.effective_chat.id,
