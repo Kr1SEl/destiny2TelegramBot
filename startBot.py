@@ -381,6 +381,7 @@ def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
 def notifyAboutXur(context: CallbackContext) -> None:
     logger.debug('Entering notifyAboutXur job')
     job = context.job
+    logger.debug(job.context)
     context.bot.send_message(
         job.context, text='\U0001F4C5 Xûr has arrived!\nTo find out his location and item pool write /whereIsXur.',
         parse_mode='HTML')
