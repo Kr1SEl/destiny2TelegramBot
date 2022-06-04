@@ -8,6 +8,7 @@ import logging
 import psycopg2
 import datetime
 from humanfriendly import format_timespan
+from bs4 import BeautifulSoup
 from oAuth_v2 import getAccessToken
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -176,7 +177,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                 payload = {"displayName": splittedName[0],
                            "displayNameCode": splittedName[1]}
                 logger.debug(f'User data recieved: {payload}')
-                context.bot.send_message(
+                msg = context.bot.send_message(
                     chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
                 jsonSubString = requests.request(
                     "POST", url, headers=headers, data=json.dumps(payload)).json()["Response"]
@@ -202,16 +203,12 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                 else:
                     logging.error(
                         "Enter Type is correct but user not exists")
-                    context.bot.send_message(
-                        chat_id=update.effective_chat.id,
-                        text=f"\U0001F6AB User <b>{splittedName[0]}#{splittedName[1]}</b> does not exist!",
-                        parse_mode='HTML', reply_markup=tryAgainKeyboard())  # unicode ERROR
+                    msg.edit_text(f"\U0001F6AB User <b>{splittedName[0]}#{splittedName[1]}</b> does not exist!",
+                                  parse_mode='HTML', reply_markup=tryAgainKeyboard())  # unicode ERROR
                     return
                 logger.debug('User succesfully found')
-                context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text=f"\U00002B50 User <b>{payload['displayName']}#{payload['displayNameCode']}</b> was succesfully found!",
-                    parse_mode='HTML')  # unicode success
+                msg.edit_text(f"\U00002B50 User <b>{payload['displayName']}#{payload['displayNameCode']}</b> was succesfully found!",
+                              parse_mode='HTML')  # unicode success
                 if update.callback_query != None:
                     update.callback_query.answer()
                 job.run_once(getInitialUserStats, 0,
@@ -219,9 +216,8 @@ def startWorkWithUser(update: Update, context: CallbackContext):
             else:
                 logging.error(
                     "Enter Type is incorrect - not 4 numbers in playerCode")
-                context.bot.send_message(
-                    chat_id=update.effective_chat.id, text='\U0001F6AB Invalid Bungie name!\n(Example: Name#1234)',
-                    reply_markup=tryAgainKeyboard())  # unicode ERROR
+                msg.edit_text('\U0001F6AB Invalid Bungie name!\n(Example: Name#1234)',
+                              reply_markup=tryAgainKeyboard())  # unicode ERROR
         else:
             logging.error(
                 "Enter Type is incorrect - message has no separator")
@@ -231,8 +227,7 @@ def startWorkWithUser(update: Update, context: CallbackContext):
     except (psycopg2.OperationalError, psycopg2.errors.InFailedSqlTransaction) as ex:
         logger.error(f'Exeption {ex} when trying to connect to DataBase')
         context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out what's wrong!")  # unicode ERROR
+            chat_id=update.effective_chat.id, text="\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out what's wrong!")
         return
     finally:
         if connection:
@@ -312,7 +307,8 @@ def parseXurInventory(xurResponse, chatID, context: CallbackContext) -> bool:
             messageAddition = f'{data.classes[str(response["classType"])]} {response["itemTypeAndTierDisplayName"]}'
         context.bot.send_message(
             chat_id=chatID, text=f'{messageAddition}\n<b>{response["displayProperties"]["name"]}</b> - Price: <b>{item[1]}</b> LS \U0001F48E', parse_mode='HTML')
-        imgLink = response["displayProperties"]["icon"]
+        # imgLink = response["displayProperties"]["icon"]
+        imgLink = response["screenshot"]
         context.bot.send_photo(
             chatID, f'https://www.bungie.net{imgLink}')
     return True
@@ -320,7 +316,7 @@ def parseXurInventory(xurResponse, chatID, context: CallbackContext) -> bool:
 
 def whereIsXur(update: Update, context: CallbackContext):
     logger.debug('Entering whereIsXur command')
-    context.bot.send_message(
+    msg = context.bot.send_message(
         chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     today = datetime.datetime.now(tz=pytz.UTC)
     logger.debug(f'Current time: {today}')
@@ -338,8 +334,7 @@ def whereIsXur(update: Update, context: CallbackContext):
                                               minutes=(0-today.minute), seconds=(0-today.second))
         logger.debug(f'Time when Xur appears next time: {nextDate}')
         dateStr = str(nextDate.ctime())
-        context.bot.send_message(
-            chat_id=update.effective_chat.id, text=f"""\U0001F5FF Xûr is not available right now. 
+        msg.edit_text(f"""\U0001F5FF Xûr is not available right now. 
 He will arrive in:
     <b>{format_timespan((nextDate-today).total_seconds())}</b>
 <i>=></i>
@@ -352,8 +347,7 @@ Set /xurnotifier so you don't miss his visit \U0001F47E""", parse_mode='HTML')
                                               minutes=(0-today.minute), seconds=(0-today.second))
         logger.debug(f'Time when Xur appears next time: {nextDate}')
         dateStr = str(nextDate.ctime())
-        context.bot.send_message(
-            chat_id=update.effective_chat.id, text=f"""\U0001F389 Xûr is avaliable on Destiny!
+        msg.edit_text(f"""\U0001F389 Xûr is avaliable on Destiny!
 You may find him in <b>{data.locations[location]}</b>
 He will leave with the weekly reset in:
     <b>{format_timespan((nextDate-today).total_seconds())}</b>
@@ -466,17 +460,37 @@ def weeklyReset(update: Update, context: CallbackContext):
         parse_mode='HTML')
 
 
-# todo build db accordingly to ls location
 def legendaryLostSector(update: Update, context: CallbackContext):
     logger.debug('Entering lostSector command')
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='\U0001FA90 Feature is currently in development. Please, be patient!')
-    pass
+    msg = context.bot.send_message(
+        chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")
+    # context.bot.send_message(chat_id=update.effective_chat.id,
+    #                          text='\U0001FA90 Feature is currently in development. Please, be patient!')
+    url = 'https://www.todayindestiny.com'
+    content = BeautifulSoup(requests.get(url).text, 'lxml')
+    allEventCards = content.find_all('div', class_='eventCardHeaderText')
+    lostSector = ''
+    lootType = 'None'
+    for eventCard in allEventCards:
+        if eventCard.find('p', class_='eventCardHeaderSet').text.strip() == 'Lost Sector':
+            logger.debug('Lost Sector Data Found')
+            lostSector = eventCard.find('p', class_='eventCardHeaderName').text
+            # TODO obtain item data
+            break
+    if lostSector == '':
+        msg.edit_text(
+            "\U0001F6AB Unable to parse data about Lost Sector. Contact @kr1sel to find out  wrong!")
+    elif lostSector == 'Unknown':
+        msg.edit_text(
+            "\U0001FA90 Lost Sector is currently unknown. Seems you're playing close to the begining of a new season and the rotation is still being figured out.")
+    else:
+        msg.edit_text(
+            f'\U0001FA90 Lost Sector is {lostSector}. You may receive {lootType} for completing it solo.\n Data is parsed form https://www.todayindestiny.com')
 
 
 def getRaidStats(update: Update, context: CallbackContext):
     logger.debug('Entering getRaidStats command')
-    context.bot.send_message(
+    msg = context.bot.send_message(
         chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     try:
         if update.callback_query != None:
@@ -518,16 +532,14 @@ def getRaidStats(update: Update, context: CallbackContext):
                     progress = 0
                 finally:
                     raidResultStr += f'{raid}: <b>{progress}</b>\n\n'
-            context.bot.send_message(
-                chat_id=update.effective_chat.id, text=raidResultStr, parse_mode='HTML')
+            msg.edit_text(raidResultStr, parse_mode='HTML')
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
     except Exception as ex:
         logger.error(
             f'Exeption {ex} when trying to connect to DataBase')
-        context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out  wrong!')  # unicode ERROR
+        msg.edit_text(
+            '\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out  wrong!')
         return
     finally:
         if connection:
@@ -537,7 +549,7 @@ def getRaidStats(update: Update, context: CallbackContext):
 
 def getGambitStats(update: Update, context: CallbackContext):
     logger.debug('Entering getGambitStats command')
-    context.bot.send_message(
+    msg = context.bot.send_message(
         chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
     try:
         if update.callback_query != None:
@@ -567,16 +579,14 @@ def getGambitStats(update: Update, context: CallbackContext):
         K/D: <b>{gambitStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>
         KA/D: <b>{gambitStats["killsDeathsAssists"]["basic"]["displayValue"]}</b>
         Invasion Kills: <b>{gambitStats["invasionKills"]["basic"]["displayValue"]}</b>"""
-        context.bot.send_message(
-            chat_id=update.effective_chat.id, text=message, parse_mode='HTML')
+        msg.edit_text(message, parse_mode='HTML')
         context.bot.send_message(
             chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
     except Exception as ex:
         logger.error(
             f'Exeption {ex} when trying to connect to DataBase')
-        context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text='\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out  wrong!')  # unicode ERROR
+        msg.edit_text(
+            '\U0001F6AB Our database is currently unreachable. Contact @kr1sel to find out  wrong!')
         return
     finally:
         if connection:
