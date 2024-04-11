@@ -1,3 +1,5 @@
+# Destiny2StatsBot
+
 **Description:**
 The Destiny2StatsBot is a Telegram bot developed using the python-telegram-bot library, designed to provide Destiny 2 players with a convenient way to access and analyze in-game statistics and information. Leveraging the power of the PostgreSQL database, this bot seamlessly integrates with the BungieAPI to offer users insights into their characters, events, and other captivating details within the Destiny 2 universe.
 
