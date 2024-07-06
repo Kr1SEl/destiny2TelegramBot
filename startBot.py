@@ -14,8 +14,6 @@ from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
 
-# TODO language select
-# TODO is possible to notify after each commit to reset notifiers?
 # TODO implement /lostsector
 ##################################################### CONFIGURATION #####################################################################################
 # logging configuration
@@ -77,7 +75,6 @@ def findBungieUser(update: Update, context: CallbackContext):
     return FINDUSER
 
 
-# TODO fix stats
 def getInitialUserStats(context: CallbackContext):
     logger.debug('Entering getInitialUserStats job')
     try:
@@ -130,23 +127,84 @@ def getInitialUserStats(context: CallbackContext):
             charData += f'{classRem}: {liteRem} \U00002728\n'
         context.bot.send_message(
             job.context, text=f"{charData}", parse_mode='HTML')
-        # TODO fix stats
         url = f"http://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Stats/"
         allTimeStats = requests.get(
             url, headers=headers).json()['Response']['mergedAllCharacters']['results']
         logger.debug('Finding and printing all time stats')
         subStats = allTimeStats['allPvE']['allTime']
+        pveStatsWeighted = round(float(subStats['activitiesCleared']['basic']['displayValue']) * 0.2 
+                                 + float(subStats['killsDeathsRatio']['basic']['displayValue']) * 0.8, 3)
         # unicode SHIELD
         strResults = f"""<b>PVE Stats</b> \U0001F6E1
     <i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>
         Activities: <b>{subStats['activitiesCleared']['basic']['displayValue']}</b>
-        K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>\n"""
+        K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>
+        """
         subStats = allTimeStats['allPvP']['allTime']
+        activitiesEntered = int(subStats['activitiesEntered']['basic']['value'])
+        activitiesWon = round((int(subStats['activitiesWon']['basic']['value'])/ (activitiesEntered if activitiesEntered > 0 else 1)) * 100, 2);
+        pvpStatsWeighted = round((activitiesWon * 0.4
+                                + float(subStats['killsDeathsRatio']['basic']['displayValue']) * 100 * 0.6)
+                                * (float(subStats['activitiesEntered']['basic']['displayValue'])/100), 3)
         # unicode TWOSWORDS
-        strResults += f"""\n<b>PVP Stats</b> \U00002694
-    <i>=></i>Matches: <b>{subStats['activitiesEntered']['basic']['displayValue']}</b>
-        Win Ratio: <b>{round((subStats['activitiesWon']['basic']['value']/subStats['activitiesEntered']['basic']['value']) * 100, 2)}</b> 
-        K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>"""
+        strPvpResults = f"""\n\n<b>PVP Stats</b> \U00002694
+    <i>=></i>Matches: <b>{activitiesEntered}</b>
+        Win Ratio: <b>{activitiesWon}</b> 
+        K/D: <b>{subStats['killsDeathsRatio']['basic']['displayValue']}</b>
+        """
+        pveRank = 100
+        pvpRank = 100
+        with connection.cursor() as cursor:
+            logger.debug(f'Setting weighted stats to database {job.context}')
+            cursor.execute(f"""SELECT *
+                            FROM stats
+                            WHERE membershipid=\'{membershipId}\'""")
+            if cursor.fetchone() == None:
+                logger.debug(f'Adding user {membershipId} to stats table')
+                cursor.execute(f"""INSERT INTO stats (membershipid)
+                                VALUES (\'{membershipId}\');""")
+            cursor.execute(
+                f"""UPDATE stats 
+                SET pve_stats={pveStatsWeighted}, pvp_stats={pvpStatsWeighted}
+                WHERE membershipid=\'{membershipId}\';""")
+            cursor.execute(
+                f"""WITH ranked_users AS (
+                    SELECT
+                        membershipid,
+                        pve_stats,
+                        PERCENT_RANK() OVER (ORDER BY pve_stats DESC) AS pct_rank
+                    FROM
+                        stats
+                )
+                SELECT
+                    (pct_rank * 100) AS pct_rank_percentage
+                FROM
+                    ranked_users
+                WHERE
+                    membershipid = \'{membershipId}\'; 
+                """)
+            pveRank = cursor.fetchone()
+            
+            cursor.execute(
+                f"""WITH ranked_users AS (
+                    SELECT
+                        membershipid,
+                        pvp_stats,
+                        PERCENT_RANK() OVER (ORDER BY pvp_stats DESC) AS pct_rank
+                    FROM
+                        stats
+                )
+                SELECT
+                    (pct_rank * 100) AS pct_rank_percentage
+                FROM
+                    ranked_users
+                WHERE
+                    membershipid = \'{membershipId}\'; 
+                """)
+            pvpRank = cursor.fetchone()
+        strResults += f"\n🏆 You are in the top <b>{round(float(pveRank[0]), 2)}%</b> of bot users according to the PVE statistics.\n"
+        strResults += strPvpResults
+        strResults += f"\n🏆 You are in the top <b>{round(float(pvpRank[0]), 2)}%</b> of bot users according to the PVP statistics."
         context.bot.send_message(
             job.context, text=strResults, parse_mode='HTML')
         context.bot.send_message(
@@ -180,8 +238,9 @@ def startWorkWithUser(update: Update, context: CallbackContext):
                 msg = context.bot.send_message(
                     chat_id=update.effective_chat.id, text=f"\U0001F6F0 Data is loading, please wait")  # unicode SATELLITE
                 jsonSubString = requests.request(
-                    "POST", url, headers=headers, data=json.dumps(payload)).json()["Response"]
-                if len(jsonSubString) >= 1:
+                    "POST", url, headers=headers, data=json.dumps(payload)).json()
+                if int(jsonSubString["ErrorCode"])!=217 and len(jsonSubString["Response"]) >= 1:
+                    jsonSubString=jsonSubString["Response"]
                     for i in range(0, len(jsonSubString)):
                         if(len(jsonSubString[0]['applicableMembershipTypes']) > 0):
                             membershipId = jsonSubString[0]['membershipId']
@@ -512,8 +571,10 @@ def getRaidStats(update: Update, context: CallbackContext):
             url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Character/0/Stats/'
             raidStats = requests.get(
                 url, headers=headers).json()['Response']['raid']['allTime']
+            raidsCleared = int(raidStats["activitiesCleared"]["basic"]["displayValue"]);
+            raidStatsWeighted = (float(raidStats["killsDeathsAssists"]["basic"]["displayValue"]) * 100) * (raidsCleared/100)
             raidResultStr = f"""<b>Raid Stats</b> \U00002620
-    <i>=></i>Raids Completed: <b>{raidStats["activitiesCleared"]["basic"]["displayValue"]}</b>
+    <i>=></i>Raids Completed: <b>{raidsCleared}</b>
         Kills: <b>{raidStats["kills"]["basic"]["displayValue"]}</b>
         Deaths: <b>{raidStats["deaths"]["basic"]["value"]}</b>
         K/D: <b>{raidStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>
@@ -533,6 +594,32 @@ def getRaidStats(update: Update, context: CallbackContext):
                     progress = 0
                 finally:
                     raidResultStr += f'{raid}: <b>{progress}</b>\n\n'
+            raidRank = 100
+            with connection.cursor() as cursor:
+                logger.debug(f'Updating weighted stats for raids to database')
+                cursor.execute(
+                    f"""UPDATE stats
+                    SET raid_stats={raidStatsWeighted}
+                    WHERE membershipid=\'{membershipId}\';""")
+                
+                cursor.execute(
+                f"""WITH ranked_users AS (
+                    SELECT
+                        membershipid,
+                        raid_stats,
+                        PERCENT_RANK() OVER (ORDER BY raid_stats DESC) AS pct_rank
+                    FROM
+                        stats
+                )
+                SELECT
+                    (pct_rank * 100) AS pct_rank_percentage
+                FROM
+                    ranked_users
+                WHERE
+                    membershipid = \'{membershipId}\'; 
+                """)
+                raidRank = cursor.fetchone()
+            raidResultStr += f"\n🏆 You are in the top <b>{round(float(raidRank[0]), 2)}%</b> of bot users according to the Raid statistics."
             msg.edit_text(raidResultStr, parse_mode='HTML')
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
@@ -571,15 +658,48 @@ def getGambitStats(update: Update, context: CallbackContext):
             url = f'https://www.bungie.net/Platform/Destiny2/{membershipType}/Account/{membershipId}/Character/0/Stats/'
             gambitStats = requests.get(
                 url, headers=headers).json()['Response']['allPvECompetitive']['allTime']
+            activitiesEntered = int(gambitStats["activitiesEntered"]["basic"]["displayValue"])
+            winRatio = round(float(gambitStats["activitiesWon"]["basic"]["value"]) / (activitiesEntered if activitiesEntered > 0 else 1) * 100, 2)
+            gambitStatsWeighted = (winRatio * 0.2 
+                                   + float(gambitStats["killsDeathsAssists"]["basic"]["displayValue"]) * 10 * 0.4 
+                                   + (float(gambitStats["invasionKills"]["basic"]["displayValue"]) / (activitiesEntered if activitiesEntered > 0 else 1)) * 100 * 0.3 
+                                   + activitiesEntered * 0.1)
+            gambitStatsWeighted = round(gambitStatsWeighted, 3)
             message = f"""<b>Gambit Stats</b> \U0001F98E
-    <i>=></i>Matches: <b>{gambitStats["activitiesEntered"]["basic"]["displayValue"]}</b>
+    <i>=></i>Matches: <b>{activitiesEntered}</b>
         Wins: <b>{gambitStats["activitiesWon"]["basic"]["displayValue"]}</b>
-        Win Rate: <b>{round((gambitStats["activitiesWon"]["basic"]["value"]/gambitStats["activitiesEntered"]["basic"]["value"]) * 100, 2)}</b>
+        Win Rate: <b>{winRatio}</b>
         Kills: <b>{gambitStats["kills"]["basic"]["displayValue"]}</b>
         Deaths: <b>{gambitStats["deaths"]["basic"]["displayValue"]}</b>
         K/D: <b>{gambitStats["killsDeathsRatio"]["basic"]["displayValue"]}</b>
         KA/D: <b>{gambitStats["killsDeathsAssists"]["basic"]["displayValue"]}</b>
-        Invasion Kills: <b>{gambitStats["invasionKills"]["basic"]["displayValue"]}</b>"""
+        Invasion Kills: <b>{gambitStats["invasionKills"]["basic"]["displayValue"]}</b>
+        """
+        gambitRank = 100
+        with connection.cursor() as cursor:
+            logger.debug(f'Updating weighted stats for gambit to database')
+            cursor.execute(
+                f"""UPDATE stats
+                SET gambit_stats={gambitStatsWeighted}
+                WHERE membershipid=\'{membershipId}\';""")
+            cursor.execute(
+                f"""WITH ranked_users AS (
+                    SELECT
+                        membershipid,
+                        gambit_stats,
+                        PERCENT_RANK() OVER (ORDER BY gambit_stats DESC) AS pct_rank
+                    FROM
+                        stats
+                )
+                SELECT
+                    (pct_rank * 100) AS pct_rank_percentage
+                FROM
+                    ranked_users
+                WHERE
+                    membershipid = \'{membershipId}\'; 
+                """)
+            gambitRank = cursor.fetchone()
+            message += f"\n🏆 You are in the top <b>{round(float(gambitRank[0]), 2)}%</b> of bot users according to the Gambit statistics."
         msg.edit_text(message, parse_mode='HTML')
         context.bot.send_message(
             chat_id=update.effective_chat.id, text="\U0001F50E Explore more stats", reply_markup=possibleUserStats())
@@ -601,15 +721,6 @@ def unkownReply(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id,
         text="Unfortunately, I don't know how to answer this request \U0001F61E.\nYou may contact @kr1sel if the bot is broken.")
 
-
-# TODO find out about fallbacks
-# def cancel(context: CallbackContext):
-#     user = update.message.from_user
-#     logger.debug("User %s canceled the conversation.", user.first_name)
-#     update.message.reply_text(
-#         'Bye! I hope we can talk again some day.', reply_markup=ReplyKeyboardRemove())
-#     if connection:
-#         connection.close()
 
 
 ###################################################### KEYBOARDS #####################################################################################

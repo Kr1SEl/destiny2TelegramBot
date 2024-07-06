@@ -16,7 +16,7 @@ raids = {
     '\U0001F916 Scourge of the Past': '1455741693',
     '\U0001F47E Spire of Stars': '3996781284',
     '\U0001F990 Eater of Worlds': '1627755918',
-    '\U0001F3C6 Leviathan': '2266286943'
+    '⚜️ Leviathan': '2266286943'
 }
 
 # locations = {
